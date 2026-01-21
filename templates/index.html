@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sell Your Item - EpicDeals.co.za</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Get an Instant Offer</h1>
+            <p class="subtitle">Answer a few quick questions and we'll make you an offer</p>
+        </div>
+
+        <!-- Conversation Area -->
+        <div id="conversation-area" class="conversation-area">
+            <div class="welcome-message">
+                <div class="icon">💬</div>
+                <h2>Let's get started!</h2>
+                <p>We'll ask you a few questions about your item to give you the best offer.</p>
+                <button id="start-btn" class="btn btn-primary">Start Now</button>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="chat-messages" style="display: none;">
+            <!-- Messages will be inserted here -->
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+
+        <!-- Input Area -->
+        <div id="input-area" class="input-area" style="display: none;">
+            <input type="text" id="text-input" placeholder="Type your answer..." />
+            <button id="send-btn" class="btn btn-send">Send</button>
+        </div>
+
+        <!-- Multiple Choice Options -->
+        <div id="options-area" class="options-area" style="display: none;">
+            <!-- Options will be inserted here -->
+        </div>
+
+        <!-- Multi-Select Checkboxes -->
+        <div id="checkbox-area" class="checkbox-area" style="display: none;">
+            <!-- Checkboxes will be inserted here -->
+        </div>
+
+        <!-- Offer Display -->
+        <div id="offer-display" class="offer-display" style="display: none;">
+            <!-- Offer details will be inserted here -->
+        </div>
+
+        <!-- Customer Info Form -->
+        <div id="customer-form" class="customer-form" style="display: none;">
+            <h3>Almost done! Just need your contact details</h3>
+            <form id="contact-form">
+                <input type="text" id="customer-name" placeholder="Your Name *" required />
+                <input type="email" id="customer-email" placeholder="Your Email *" required />
+                <input type="tel" id="customer-phone" placeholder="Your Phone Number *" required />
+                <button type="submit" class="btn btn-primary">Get My Offer</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=6"></script>
+</body>
+</html>
