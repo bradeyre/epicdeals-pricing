@@ -3,8 +3,7 @@
 ## Features Implemented
 
 ### 1. ✅ Perplexity API Integration
-- Added API key: `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`
-- Updated `.env` file
+- API key configured in `.env` file (use your own key)
 - Integrated into price research service as Layer 1 (most accurate)
 - Searches: epicdeals.co.za, bobshop.co.za, gumtree.co.za, takealot.com, carbonite.co.za
 
