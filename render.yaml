@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: epicdeals-pricing-tool
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: OFFER_PERCENTAGE
+        value: "0.70"
+      - key: MIN_ITEM_VALUE
+        value: "5000"
+      - key: MAX_ITEM_VALUE
+        value: "25000"
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.75"
+      - key: NOTIFICATION_EMAIL
+        value: "brad@epicdeals.co.za"
+      - key: FLASK_ENV
+        value: "production"
