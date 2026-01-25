@@ -571,7 +571,7 @@ CONVERSATION HISTORY (check for duplicate questions):
 
 Return a JSON object with these fields (use null if not mentioned):
 {
-    "category": "phone|laptop|camera|tablet|console|appliance|watch|other",
+    "category": "phone|laptop|camera|tablet|console|appliance|watch|other (binoculars=camera, headphones=other)",
     "brand": "Brand name",
     "model": "Model name/number",
     "specifications": {
