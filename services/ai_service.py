@@ -385,6 +385,16 @@ COMPLETION: Set "completed": true when you have:
 5. Device unlock verification (ONLY if device is intelligently determined to be lockable - use logic, not category lists)
 6. Contract status (ONLY if device can have contracts - smartphones, tablets, smart watches with cellular)
 
+COMPLETION EXAMPLE - After user answers last question (unlock/contract), return EXACTLY this format:
+{
+    "question": "",
+    "field_name": "",
+    "type": "text",
+    "completed": true
+}
+
+DO NOT ask any more questions after all requirements met. Just return completed: true with empty question.
+
 DECLINE IMMEDIATELY if:
 - Device is locked to an account → decline_reason: "device_locked"
 - Device is under contract/payment plan → decline_reason: "under_contract"
@@ -445,6 +455,10 @@ CONVERSATION HISTORY (check for duplicate questions):
             return result
         except json.JSONDecodeError as e:
             # Fallback if AI doesn't return proper JSON
+            print(f"❌ JSON PARSE ERROR in get_next_question:")
+            print(f"   Error: {e}")
+            print(f"   Raw response: {response_text}")
+            print(f"   Full AI response: {response.content[0].text}")
             return {
                 "question": "What type of item do you want to sell?",
                 "field_name": "item_description",
