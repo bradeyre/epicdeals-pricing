@@ -510,12 +510,14 @@ CONVERSATION HISTORY (check for duplicate questions):
                 "content": msg["content"]
             })
 
-        # If no messages yet, start with a user message to begin the conversation
+        # If no messages yet, return the initial question directly
         if not messages:
-            messages.append({
-                "role": "user",
-                "content": "I want to sell an item. Please ask me the first question to gather information."
-            })
+            return {
+                "question": "What item do you want to sell? (e.g., iPhone 11, MacBook Pro, Samsung TV, Piano)",
+                "field_name": "item_description",
+                "type": "text",
+                "completed": False
+            }
 
         # Call Claude API
         response = self.client.messages.create(
