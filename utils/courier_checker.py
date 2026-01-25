@@ -45,36 +45,25 @@ def is_courier_eligible(product_info: dict) -> dict:
 
         client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
 
-        prompt = f"""Analyze if this item can be couriered: "{full_text}"
+        prompt = f"""Is "{full_text}" small enough to fit in a courier bag/box?
 
-SIMPLE RULE:
-Can it fit in a courier bag or small box (roughly 60cm x 40cm x 40cm) and weigh under 25kg?
-- If YES → {{"eligible": true}}
-- If NO → {{"eligible": false}}
+RULE: Only items that fit in a bag and weigh under 25kg can be couriered.
 
-THINK STEP BY STEP:
-1. What is this item?
-2. How big is it physically?
-3. Can one person easily carry it in a box?
-4. Would a courier accept it?
+YES (eligible: true):
+- Phone, laptop, tablet, camera, watch, headphones, drone, gaming console
 
-If the answer to #3 or #4 is NO, then eligible: false.
+NO (eligible: false):
+- Piano, guitar, fridge, couch, car, elephant, jetski, penguin, washing machine
 
-Common sense examples:
-- Piano/keyboard/guitar → TOO LARGE → false
-- Fridge/washer/couch → TOO LARGE → false
-- Car/bike/elephant → ABSURD → false (is_silly: true)
-- Phone/laptop/tablet/headphones → SMALL → true
-- Camera/watch/drone → SMALL → true
-
-Output ONLY valid JSON:
-{{"eligible": true/false, "is_silly": true/false, "category_matched": "descriptor", "reason": "message"}}
+Output JSON ONLY:
+{{"eligible": false, "is_silly": false, "category_matched": "descriptor", "reason": "Brief message"}}
 
 Examples:
-{{"eligible": false, "is_silly": false, "category_matched": "instrument", "reason": "🎹 Pianos are too large for courier! We only accept items that fit in a small box like phones, laptops, and tablets."}}
-{{"eligible": true, "is_silly": false, "category_matched": "phone", "reason": "Item can be couriered"}}
+piano → {{"eligible": false, "is_silly": false, "category_matched": "instrument", "reason": "Pianos are too large for courier. We only accept small electronics."}}
+phone → {{"eligible": true, "is_silly": false, "category_matched": "phone", "reason": "Item can be couriered"}}
+elephant → {{"eligible": false, "is_silly": true, "category_matched": "animal", "reason": "We can't courier elephants! We buy small electronics."}}
 
-Analyze now:"""
+Now analyze "{full_text}":"""
 
         print(f"   Calling Claude API...")
         response = client.messages.create(
