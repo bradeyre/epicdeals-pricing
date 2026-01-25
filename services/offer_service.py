@@ -3,6 +3,7 @@ from services.price_research_service import PriceResearchService
 from services.repair_cost_service import RepairCostService
 from services.condition_assessment_service import ConditionAssessmentService
 from services.intelligent_repair_cost_service import IntelligentRepairCostService
+from services.research_queue_service import ResearchQueueService
 from utils.courier_checker import is_courier_eligible, get_courier_rejection_message, get_business_model_options
 
 
@@ -20,8 +21,10 @@ class OfferService:
         self.repair_cost_service = RepairCostService()  # Legacy fallback
         self.condition_service = ConditionAssessmentService()
         self.intelligent_repair_service = IntelligentRepairCostService()  # NEW!
+        self.research_queue_service = ResearchQueueService()  # NEW: 2-day research SLA
         self.sell_now_percentage = Config.SELL_NOW_PERCENTAGE
         self.consignment_percentage = Config.CONSIGNMENT_PERCENTAGE
+        self.repair_confidence_threshold = 0.65  # Minimum confidence for repair costs
 
     def calculate_offer(self, product_info, damage_info=None):
         """
@@ -107,30 +110,132 @@ class OfferService:
 
         repair_costs = repair_research.get('total_repair_cost', 0)
         repair_explanation = repair_research.get('explanation', '')
+        repair_confidence = repair_research.get('confidence', 1.0)
 
-        # Step 3: Apply condition multiplier
-        print("Applying condition multiplier...")
-        # Parse condition from new format: "Pristine - Like new, no visible wear (95-100% value)"
-        # Extract just the first word (pristine, excellent, good, fair, poor)
-        condition_key = (condition.lower().split('-')[0].split('(')[0].strip() if condition else 'good')
+        # Check if repair costs have low confidence - needs manual research
+        if repair_costs > 0 and repair_confidence < self.repair_confidence_threshold:
+            print(f"Low repair confidence ({repair_confidence:.2f}) - adding to research queue")
 
-        condition_multiplier = self.condition_service.CONDITION_MULTIPLIERS.get(
-            condition_key,
-            0.775  # Default to "good" multiplier
+            # Calculate preliminary offer
+            preliminary_value = self.condition_service.calculate_value_with_repairs(
+                market_value,
+                repair_costs,
+                category
+            )
+            preliminary_offer = preliminary_value * self.sell_now_percentage
+
+            return {
+                'offer_amount': None,
+                'market_value': market_value,
+                'repair_costs': repair_costs,
+                'repair_explanation': repair_explanation,
+                'preliminary_offer': preliminary_offer,
+                'calculation_breakdown': {
+                    'market_value': market_value,
+                    'repair_costs': repair_costs,
+                    'preliminary_offer': preliminary_offer,
+                    'repair_confidence': repair_confidence
+                },
+                'confidence': repair_confidence,
+                'recommendation': 'repair_research_needed',
+                'reason': f'Repair cost estimates need verification (confidence: {repair_confidence:.0%})',
+                'price_research': price_research,
+                'repair_estimate': repair_research,
+                'needs_manual_research': True,
+                'research_sla': '2 working days'
+            }
+
+        # Step 3: Classify damage severity and check for BER
+        print("Classifying damage severity...")
+        damage_classification = self.condition_service.classify_damage_severity(
+            damage_details,
+            category
         )
 
-        print(f"Condition: {condition} → Key: {condition_key} → Multiplier: {condition_multiplier}")
+        print(f"Damage classification: {damage_classification}")
 
-        # Calculate adjusted value
-        # Formula: (Market Value × Condition Multiplier) - Repair Costs
-        after_condition = market_value * condition_multiplier
-        adjusted_value = max(0, after_condition - repair_costs)
+        # Step 4: Check if Beyond Economic Repair
+        print("Checking if beyond economic repair...")
+        ber_check = self.condition_service.is_beyond_economic_repair(
+            product_info,
+            repair_costs,
+            market_value,
+            damage_classification
+        )
 
-        print(f"\nPricing Calculation:")
-        print(f"- Market Value: R{market_value:,.2f}")
-        print(f"- Condition ({condition}): {condition_multiplier * 100:.0f}% = R{after_condition:,.2f}")
+        print(f"BER Check: {ber_check}")
+
+        # If BER, return consignment-only offer
+        if ber_check['is_ber']:
+            print(f"Item is BER: {ber_check['reason']}")
+
+            # Calculate consignment estimate (sell as-is)
+            # Estimate selling price for damaged item
+            # Use damage severity to estimate as-is value
+            major_damage_count = (
+                len(damage_classification['structural']) +
+                len(damage_classification['functional_failure']) +
+                len(damage_classification['ber_flags'])
+            )
+
+            # Estimate as-is value (what we can sell it for damaged)
+            if major_damage_count >= 2 or damage_classification['ber_flags']:
+                # Severe damage - parts value only
+                estimated_sale_price = market_value * 0.20  # 20% for parts
+            elif damage_classification['structural']:
+                # Structural damage - 30-40% of value
+                estimated_sale_price = market_value * 0.35
+            else:
+                # Minor issues - 50-60% of value
+                estimated_sale_price = market_value * 0.55
+
+            consignment_payout = estimated_sale_price * self.consignment_percentage
+            consignment_payout = max(0, round(consignment_payout / 10) * 10)
+
+            return {
+                'offer_amount': None,  # No direct purchase offer
+                'market_value': market_value,
+                'repair_costs': repair_costs,
+                'repair_explanation': repair_explanation,
+                'calculation_breakdown': {
+                    'market_value': market_value,
+                    'repair_costs': repair_costs,
+                    'ber_reason': ber_check['reason']
+                },
+                'confidence': price_research.get('confidence', 0),
+                'recommendation': 'ber_consignment_only',
+                'reason': ber_check['reason'],
+                'ber_check': ber_check,
+                'damage_classification': damage_classification,
+                'price_research': price_research,
+                'repair_estimate': repair_research,
+                'courier_eligible': True,
+                'consignment_option': {
+                    'expected_sale_price': estimated_sale_price,
+                    'commission_rate': 1 - self.consignment_percentage,
+                    'commission_amount': estimated_sale_price * (1 - self.consignment_percentage),
+                    'seller_payout': consignment_payout,
+                    'payment_terms': 'Paid 2 working days after buyer receives the item',
+                    'consignment_period': f'{Config.CONSIGNMENT_PERIOD_DAYS} days',
+                    'insurance': 'Fully insured while in our possession',
+                    'shipping_cost': 'Deducted from payout if sold (estimated R100-150)',
+                    'listing_type': 'As-Is / For Parts/Repair'
+                }
+            }
+
+        # Step 5: NEW CALCULATION - No double-dipping!
+        # Use the new method that doesn't double-penalize
+        print("Calculating value with repairs (new method)...")
+        adjusted_value = self.condition_service.calculate_value_with_repairs(
+            market_value,
+            repair_costs,
+            category
+        )
+
+        print(f"\nPricing Calculation (NEW METHOD):")
+        print(f"- Market Value (working condition): R{market_value:,.2f}")
         print(f"- Repair Costs: -R{repair_costs:,.2f}")
-        print(f"- Adjusted Value: R{adjusted_value:,.2f}\n")
+        print(f"- Value to Us: R{adjusted_value:,.2f}\n")
 
         # Step 4: Legacy support for old damage_info format
         if damage_info and not damage_details:
@@ -226,26 +331,29 @@ class OfferService:
             recommendation = 'email_review'
             reason = self._determine_review_reason(price_research, repair_research, overall_confidence)
 
+        # Calculate after_condition (market value is already the "working condition" value)
+        after_condition = market_value
+
         return {
             'offer_amount': offer_amount,
             'market_value': market_value,
             'repair_costs': repair_costs,
             'repair_explanation': repair_explanation,  # NEW: Transparent breakdown!
-            'after_condition': after_condition,  # Value after condition multiplier
+            'after_condition': after_condition,  # Value after condition multiplier (just market value in new system)
             'adjusted_value': adjusted_value,  # Final value after repairs
             'sell_now_offer': sell_now_offer,  # For frontend display
             'consignment_payout': consignment_payout,  # For frontend display
+            'damage_classification': damage_classification,  # NEW: Show severity
+            'ber_check': ber_check,  # NEW: BER analysis
             'calculation_breakdown': {
                 'market_value': market_value,
-                'condition': condition,
-                'condition_multiplier': condition_multiplier,
-                'after_condition': after_condition,
                 'repair_costs': repair_costs,
                 'adjusted_value': adjusted_value,
                 'sell_now_percentage': self.sell_now_percentage,
                 'sell_now_offer': sell_now_offer,
                 'consignment_percentage': self.consignment_percentage,
-                'final_offer': offer_amount
+                'final_offer': offer_amount,
+                'calculation_method': 'repair_based'  # NEW method
             },
             'confidence': overall_confidence,
             'recommendation': recommendation,
@@ -368,6 +476,75 @@ class OfferService:
 {offer_data['reason']}
 
 We're constantly expanding our services, so please check back in the future!"""
+
+        # Check for BER consignment-only
+        if offer_data['recommendation'] == 'ber_consignment_only':
+            consignment = offer_data.get('consignment_option', {})
+            ber_reason = offer_data.get('reason', '')
+
+            return f"""Thank you for your interest in EpicDeals!
+
+Based on the condition reported, we're unable to make a direct purchase offer.
+
+**Reason:** {ber_reason}
+
+---
+
+**CONSIGNMENT OPTION AVAILABLE:**
+
+We can still list your item for sale on your behalf:
+
+💰 **Estimated Payout: R{consignment.get('seller_payout', 0):,.2f}** (after sale)
+
+**How it works:**
+- Listing type: {consignment.get('listing_type', 'As-Is')}
+- Expected sale price: R{consignment.get('expected_sale_price', 0):,.2f}
+- Our commission (15%): R{consignment.get('commission_amount', 0):,.2f}
+- Shipping: {consignment.get('shipping_cost', 'Deducted from payout')}
+- Your payout: R{consignment.get('seller_payout', 0):,.2f}
+
+**Requirements for consignment:**
+1. Upload 3-5 clear photos showing all damage
+2. Accurate description (we verify with AI)
+3. Commit to not selling elsewhere while listed
+4. Ship within 48 hours if sold (we provide label)
+5. Shipping cost deducted from payout
+
+**Benefits:**
+✓ No repair costs for you
+✓ We handle all buyer interactions
+✓ Fully insured while with us
+✓ Payment within 2 days after buyer receives item
+✓ Can request removal anytime if not sold
+
+**Next Steps:**
+If you'd like to proceed with consignment, we'll need photos of your item showing all issues clearly.
+
+Interested in listing on consignment?"""
+
+        # Check for repair research needed
+        if offer_data['recommendation'] == 'repair_research_needed':
+            preliminary = offer_data.get('preliminary_offer', 0)
+            repair_costs = offer_data.get('repair_costs', 0)
+
+            return f"""Thank you for your interest in EpicDeals!
+
+We've analyzed your item but need to verify some repair cost estimates to give you an accurate offer.
+
+**Market Value:** R{offer_data['market_value']:,.2f}
+**Estimated Repair Costs:** R{repair_costs:,.2f} (needs verification)
+**Preliminary Offer:** R{preliminary:,.2f}
+
+**What happens next:**
+1. Our team will research accurate repair costs within 2 working days
+2. We'll send you a final offer via email/SMS
+3. The final offer may be slightly higher or lower based on verified costs
+4. You'll have 48 hours to accept the final offer
+
+**Why we need to verify:**
+{offer_data.get('reason', 'Some repair costs require expert assessment')}
+
+We'll get back to you within 2 working days with a confirmed offer!"""
 
         if offer_data['recommendation'] == 'instant_offer':
             consignment = offer_data.get('consignment_option', {})

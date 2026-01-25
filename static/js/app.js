@@ -18,6 +18,46 @@ class EpicDealsApp {
             e.preventDefault();
             this.submitCustomerInfo();
         });
+
+        // Terms & Conditions modal
+        this.initTermsModal();
+
+        // Set minimum date for collection date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const minDate = tomorrow.toISOString().split('T')[0];
+        const collectionDateInput = document.getElementById('collection-date');
+        if (collectionDateInput) {
+            collectionDateInput.min = minDate;
+        }
+    }
+
+    initTermsModal() {
+        const modal = document.getElementById('terms-modal');
+        const showTermsLink = document.getElementById('show-terms-link');
+        const closeButtons = document.querySelectorAll('.close-modal, .close-modal-btn');
+
+        // Delegate event for show terms link (since it's created dynamically)
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'show-terms-link') {
+                e.preventDefault();
+                modal.style.display = 'block';
+            }
+        });
+
+        // Close modal when clicking X or Close button
+        closeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
     }
 
     async startConversation() {
@@ -164,6 +204,12 @@ class EpicDealsApp {
             const data = await response.json();
 
             if (data.success) {
+                // Check for rejection (non-courier item)
+                if (data.rejection) {
+                    this.showRejection(data.rejection_reason);
+                    return;
+                }
+
                 if (data.completed) {
                     // Conversation complete, calculate offer
                     this.addMessage(data.message, 'bot');
@@ -183,6 +229,30 @@ class EpicDealsApp {
         }
     }
 
+    showRejection(reason) {
+        // Hide chat and show rejection message
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.style.display = 'none';
+
+        const offerDisplay = document.getElementById('offer-display');
+        offerDisplay.style.display = 'block';
+
+        offerDisplay.innerHTML = `
+            <div class="rejection-message">
+                <div class="icon">📦</div>
+                <h2>We're Sorry</h2>
+                <p style="color: #666; margin: 20px 0; line-height: 1.6;">
+                    ${reason}
+                </p>
+                <p style="color: #999; font-size: 14px; margin-top: 30px;">
+                    We're constantly expanding our services. Please check back soon or contact us at
+                    <a href="mailto:brad@epicdeals.co.za" style="color: #2e88c9; text-decoration: none; font-weight: 600;">brad@epicdeals.co.za</a>
+                </p>
+                <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 20px;">Start Over</button>
+            </div>
+        `;
+    }
+
     async calculateOffer() {
         this.showLoading();
 
@@ -195,6 +265,8 @@ class EpicDealsApp {
             const data = await response.json();
 
             if (data.success) {
+                // Store product info for later use
+                this.productInfo = data.offer.price_research?.product_info || {};
                 this.displayOffer(data.offer);
             } else {
                 this.showError(data.error || 'Failed to calculate offer.');
@@ -207,12 +279,55 @@ class EpicDealsApp {
         }
     }
 
+    getProductSummary(offer) {
+        // Try to get product info from offer or from stored session
+        const priceResearch = offer.price_research || {};
+        const productInfo = priceResearch.product_info || this.productInfo || {};
+
+        const brand = productInfo.brand || 'Unknown Brand';
+        const model = productInfo.model || 'Unknown Model';
+        const category = productInfo.category || 'Item';
+        const condition = productInfo.condition || 'Used';
+        const year = productInfo.year || productInfo.specifications?.year || '';
+
+        let summaryHTML = `
+            <div class="product-summary">
+                <h3>Item Summary</h3>
+                <div class="summary-details">
+                    <div class="summary-item">
+                        <span class="summary-label">Product:</span>
+                        <span class="summary-value">${brand} ${model}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Category:</span>
+                        <span class="summary-value">${category}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Condition:</span>
+                        <span class="summary-value">${condition.charAt(0).toUpperCase() + condition.slice(1)}</span>
+                    </div>
+                    ${year ? `
+                    <div class="summary-item">
+                        <span class="summary-label">Year:</span>
+                        <span class="summary-value">${year}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+
+        return summaryHTML;
+    }
+
     displayOffer(offer) {
         const chatMessages = document.getElementById('chat-messages');
         chatMessages.style.display = 'none';
 
         const offerDisplay = document.getElementById('offer-display');
         offerDisplay.style.display = 'block';
+
+        // Store offer for later use
+        this.currentOffer = offer;
 
         // Handle user estimate request
         if (offer.recommendation === 'user_estimate') {
@@ -305,6 +420,8 @@ class EpicDealsApp {
                 <div class="icon">🎉</div>
                 <h2>Great news! We'd like to make you an offer</h2>
 
+                ${this.getProductSummary(offer)}
+
                 <div class="beta-notice">
                     <strong>🚀 New System!</strong> This is our new automated pricing tool. All offers require manual verification by our team before final confirmation. We'll contact you within 2 working days.
                 </div>
@@ -339,15 +456,19 @@ class EpicDealsApp {
                 </div>
                 ` : ''}
 
+                <div class="vat-notice">
+                    <p style="font-size: 0.9em; color: #666;">All prices include VAT</p>
+                </div>
+
                 <div class="dual-offers">
                     <div class="offer-option sell-now">
-                        <h3>OPTION 1: Sell Now</h3>
+                        <h3>OPTION 1: SELL NOW</h3>
                         <div class="option-amount">R${this.formatNumber(offer.sell_now_offer)}</div>
                         <p class="option-description">Immediate payment (65%)</p>
                     </div>
 
                     <div class="offer-option consignment">
-                        <h3>OPTION 2: Consignment</h3>
+                        <h3>OPTION 2: CONSIGNMENT</h3>
                         <div class="option-amount highlight">R${this.formatNumber(offer.consignment_payout)}</div>
                         <p class="option-description">After sale (85%)</p>
                         <p class="savings">💰 That's R${this.formatNumber(offer.consignment_payout - offer.sell_now_offer)} MORE!</p>
@@ -365,15 +486,13 @@ class EpicDealsApp {
                 </p>
             `;
 
-            // Store offer for dispute form
-            this.currentOffer = offer;
-
             // Add event listener for price dispute link
             const disputeLink = document.getElementById('dispute-price-link');
             if (disputeLink) {
                 disputeLink.addEventListener('click', (e) => {
                     e.preventDefault();
-                    this.showPriceDisputeForm(offer.market_value);
+                    // Pass adjusted value instead of market value for dispute form
+                    this.showPriceDisputeForm(offer.adjusted_value || offer.market_value);
                 });
             }
         } else {
@@ -436,9 +555,17 @@ class EpicDealsApp {
         const name = document.getElementById('customer-name').value.trim();
         const email = document.getElementById('customer-email').value.trim();
         const phone = document.getElementById('customer-phone').value.trim();
+        const address = document.getElementById('customer-address').value.trim();
+        const collectionDate = document.getElementById('collection-date').value;
+        const termsAgreed = document.getElementById('terms-agreement').checked;
 
-        if (!name || !email || !phone) {
-            this.showError('Please fill in all fields');
+        if (!name || !email || !phone || !address || !collectionDate) {
+            this.showError('Please fill in all required fields');
+            return;
+        }
+
+        if (!termsAgreed) {
+            this.showError('Please agree to the Terms & Conditions');
             return;
         }
 
@@ -448,7 +575,14 @@ class EpicDealsApp {
             const response = await fetch('/api/submit-customer-info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, phone })
+                body: JSON.stringify({
+                    name,
+                    email,
+                    phone,
+                    address,
+                    collection_date: collectionDate,
+                    terms_agreed: termsAgreed
+                })
             });
 
             const data = await response.json();

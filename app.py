@@ -5,6 +5,7 @@ from services.ai_service import AIService
 from services.offer_service import OfferService
 from services.email_service import EmailService
 from utils.validators import Validators
+from utils.courier_checker import is_courier_eligible, get_courier_rejection_message
 import os
 import secrets
 
@@ -68,6 +69,24 @@ def submit_answer():
         'content': user_answer
     })
 
+    # Quick courier check on raw user input (before AI extraction)
+    # This catches obvious non-courier items immediately
+    if not session.get('courier_checked'):
+        quick_check = is_courier_eligible({'category': user_answer.lower(), 'brand': '', 'model': user_answer.lower()})
+        if not quick_check['eligible']:
+            session['courier_checked'] = True
+            return jsonify({
+                'success': True,
+                'completed': False,
+                'question': {
+                    'question': quick_check['reason'],
+                    'type': 'rejection',
+                    'completed': True
+                },
+                'rejection': True,
+                'rejection_reason': quick_check['reason']
+            })
+
     # Extract information from the conversation so far and update product_info
     extracted_info = ai_service.extract_product_details(conversation_history)
 
@@ -88,6 +107,25 @@ def submit_answer():
     print(f"Extracted info: {extracted_info}")
     print(f"Updated product_info: {product_info}")
     print(f"{'='*60}\n")
+
+    # Check courier eligibility after getting category
+    if product_info.get('category') and not session.get('courier_checked'):
+        courier_check = is_courier_eligible(product_info)
+        session['courier_checked'] = True
+
+        if not courier_check['eligible']:
+            # Return non-courier rejection
+            return jsonify({
+                'success': True,
+                'completed': False,
+                'question': {
+                    'question': courier_check['reason'],
+                    'type': 'rejection',
+                    'completed': True
+                },
+                'rejection': True,
+                'rejection_reason': courier_check['reason']
+            })
 
     # Get next question from AI with updated product info
     next_question = ai_service.get_next_question(conversation_history, product_info)
@@ -221,7 +259,10 @@ def submit_customer_info():
     customer_info = {
         'name': Validators.sanitize_input(data.get('name', '')),
         'email': Validators.sanitize_input(data.get('email', '')),
-        'phone': Validators.sanitize_input(data.get('phone', ''))
+        'phone': Validators.sanitize_input(data.get('phone', '')),
+        'address': Validators.sanitize_input(data.get('address', '')),
+        'collection_date': Validators.sanitize_input(data.get('collection_date', '')),
+        'terms_agreed': data.get('terms_agreed', False)
     }
 
     # Validate email
@@ -229,6 +270,20 @@ def submit_customer_info():
         return jsonify({
             'success': False,
             'error': 'Please provide a valid email address'
+        }), 400
+
+    # Validate required fields
+    if not customer_info['address'] or not customer_info['collection_date']:
+        return jsonify({
+            'success': False,
+            'error': 'Please provide collection address and date'
+        }), 400
+
+    # Validate terms agreement
+    if not customer_info['terms_agreed']:
+        return jsonify({
+            'success': False,
+            'error': 'Please agree to the Terms & Conditions'
         }), 400
 
     # Store customer info in session for potential price dispute

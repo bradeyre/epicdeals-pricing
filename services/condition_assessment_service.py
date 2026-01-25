@@ -116,6 +116,9 @@ class ConditionAssessmentService:
 
     def calculate_adjusted_value(self, base_value, condition, damage_details, category):
         """
+        DEPRECATED - This method uses the old double-dipping logic
+        Use calculate_value_with_repairs() instead
+
         Calculate adjusted value based on condition and specific issues
 
         Args:
@@ -278,27 +281,52 @@ class ConditionAssessmentService:
 
         if category_lower in ['phone', 'smartphone', 'mobile', 'iphone', 'android', 'tablet', 'ipad']:
             return [
-                "Screen cracked or scratched",
+                # Structural damage (Poor condition)
+                "Screen cracked",
                 "Back glass cracked",
-                "Body dents or deep scratches",
-                "Battery health below 80%",
-                "Camera issues (blurry, not working)",
-                "Face ID / Touch ID not working",
-                "Buttons or ports damaged",
                 "Water damage",
+
+                # Functional failures (Poor/Fair condition)
+                "Face ID / Touch ID not working",
+                "Camera not working",
+                "Won't turn on / Dead",
+
+                # Repairable issues (Fair condition)
+                "Battery health below 80%",
+                "Buttons or ports damaged",
+                "Camera issues (blurry)",
+
+                # Cosmetic only (Good/Excellent condition)
+                "Screen scratches (not cracked)",
+                "Body scratches or scuffs",
+                "Minor dents",
+
                 "None - Everything works perfectly"
             ]
 
         elif category_lower in ['laptop', 'notebook', 'macbook', 'computer']:
             return [
-                "Screen scratches, dead pixels, or cracks",
-                "Keyboard keys missing or sticky",
-                "Trackpad not working properly",
+                # Structural damage (Poor condition)
+                "Screen cracked",
+                "Hinge broken",
+                "Water damage",
+
+                # Functional failures (Poor/Fair condition)
+                "Won't turn on / Dead",
+                "Trackpad not working",
+                "Keyboard not working",
+
+                # Repairable issues (Fair condition)
                 "Battery health below 80%",
-                "Dents or cracks in body",
-                "Hinge loose or broken",
+                "Keyboard keys missing or sticky",
                 "Ports not working",
                 "Overheating issues",
+
+                # Cosmetic only (Good/Excellent condition)
+                "Screen scratches (not cracked)",
+                "Dead pixels (minor)",
+                "Body scratches or dents",
+
                 "None - Everything works perfectly"
             ]
 
@@ -316,13 +344,24 @@ class ConditionAssessmentService:
 
         elif category_lower in ['tv', 'television']:
             return [
-                "Screen burn-in or dead pixels",
+                # Beyond Economic Repair (Decline/Consignment only)
                 "Cracked screen",
-                "Lines or discoloration",
+                "Screen burn-in (severe)",
+
+                # Functional failures (Poor/Fair)
+                "Won't turn on / Dead",
+                "Lines or discoloration on screen",
                 "HDMI ports not working",
+
+                # Repairable issues (Fair)
                 "Smart features not working",
+                "Dead pixels (minor)",
+
+                # Cosmetic/Missing parts (Good)
                 "Stand missing or broken",
                 "Remote missing",
+                "Body scratches",
+
                 "None - Everything works perfectly"
             ]
 
@@ -398,3 +437,231 @@ class ConditionAssessmentService:
         breakdown += f"\n**Final Adjusted Value: R{adjusted_value:,.2f}**\n"
 
         return breakdown
+
+    def classify_damage_severity(self, damage_details, category):
+        """
+        Classify damage into severity levels
+
+        Args:
+            damage_details (list): List of damage issues
+            category (str): Product category
+
+        Returns:
+            dict: {
+                'cosmetic_only': [...],
+                'repairable': [...],
+                'structural': [...],
+                'functional_failure': [...],
+                'ber_flags': [...]  # Beyond Economic Repair flags
+            }
+        """
+
+        classification = {
+            'cosmetic_only': [],
+            'repairable': [],
+            'structural': [],
+            'functional_failure': [],
+            'ber_flags': []
+        }
+
+        if not damage_details:
+            return classification
+
+        # Check for "None - Everything works perfectly"
+        none_selected = any('none' in str(issue).lower() and 'works' in str(issue).lower()
+                          for issue in damage_details)
+
+        if none_selected:
+            return classification
+
+        # Universal BER keywords (category-agnostic)
+        ber_keywords = [
+            'water damage', 'liquid damage', 'moisture',
+            'fungus', 'mold', 'corrosion', 'rust' if category == 'appliance' else None,
+            'won\'t turn on', 'won\'t power on', 'doesn\'t turn on', 'dead',
+            'motherboard', 'logic board', 'main board'
+        ]
+        ber_keywords = [k for k in ber_keywords if k]  # Remove None values
+
+        for issue in damage_details:
+            issue_lower = issue.lower()
+
+            # Check for BER flags first
+            if any(keyword in issue_lower for keyword in ber_keywords):
+                classification['ber_flags'].append(issue)
+                continue
+
+            # Structural damage (requires professional repair)
+            if any(keyword in issue_lower for keyword in [
+                'cracked screen', 'screen cracked', 'screen crack',
+                'back glass cracked', 'back cracked',
+                'hinge broken', 'hinge loose',
+                'shutter not working', 'shutter broken'
+            ]):
+                classification['structural'].append(issue)
+                continue
+
+            # Functional failures (major component not working)
+            if any(keyword in issue_lower for keyword in [
+                'camera issues', 'camera not working', 'camera broken',
+                'face id not working', 'touch id not working', 'biometric',
+                'trackpad not working', 'trackpad broken',
+                'autofocus issues',
+                'ports not working', 'hdmi not working',
+                'doesn\'t work properly', 'won\'t start',
+                'disc drive not working',
+                'motor', 'compressor', 'leaks', 'leaking'
+            ]):
+                classification['functional_failure'].append(issue)
+                continue
+
+            # Repairable issues (can be fixed at reasonable cost)
+            if any(keyword in issue_lower for keyword in [
+                'battery', 'button', 'port damaged',
+                'keyboard', 'keys missing', 'sticky',
+                'sensor dust', 'sensor spots',
+                'overheating', 'excessive noise',
+                'missing parts', 'missing accessories'
+            ]):
+                classification['repairable'].append(issue)
+                continue
+
+            # Everything else is cosmetic
+            classification['cosmetic_only'].append(issue)
+
+        return classification
+
+    def is_beyond_economic_repair(self, product_info, repair_cost, market_value, damage_classification):
+        """
+        Universal BER (Beyond Economic Repair) detection
+        Works for ANY product category
+
+        Args:
+            product_info (dict): Product details
+            repair_cost (float): Total estimated repair cost
+            market_value (float): Market value in working condition
+            damage_classification (dict): Output from classify_damage_severity
+
+        Returns:
+            dict: {
+                'is_ber': bool,
+                'reason': str,
+                'recommendation': 'decline' or 'consignment'
+            }
+        """
+
+        # Rule 1: BER flags (water damage, fungus, etc.)
+        if damage_classification['ber_flags']:
+            return {
+                'is_ber': True,
+                'reason': f"Unreliable repair: {', '.join(damage_classification['ber_flags'])}",
+                'recommendation': 'consignment'
+            }
+
+        # Rule 2: Multiple major issues (compounding risk)
+        major_count = (
+            len(damage_classification['structural']) +
+            len(damage_classification['functional_failure'])
+        )
+
+        if major_count >= 3:
+            return {
+                'is_ber': True,
+                'reason': f"Multiple major issues ({major_count}) create compounding risk",
+                'recommendation': 'consignment'
+            }
+
+        # Rule 3: Repair cost percentage threshold (dynamic)
+        if repair_cost > 0 and market_value > 0:
+            repair_percentage = (repair_cost / market_value) * 100
+
+            # Dynamic threshold based on product value
+            if market_value < 2000:
+                threshold = 50  # Low-value items: more tolerance
+            elif market_value < 10000:
+                threshold = 35  # Mid-value: moderate
+            else:
+                threshold = 25  # High-value: strict
+
+            if repair_percentage > threshold:
+                return {
+                    'is_ber': True,
+                    'reason': f"Repair cost ({repair_percentage:.0f}%) exceeds economic threshold ({threshold}%)",
+                    'recommendation': 'consignment'
+                }
+
+        # Rule 4: Age + damage combination
+        year = product_info.get('year')
+        if year:
+            from datetime import datetime
+            age = datetime.now().year - int(year)
+
+            if age > 5 and repair_cost > (market_value * 0.3):
+                return {
+                    'is_ber': True,
+                    'reason': f"Old product ({age} years) + high repair cost ({(repair_cost/market_value)*100:.0f}%) = poor investment",
+                    'recommendation': 'consignment'
+                }
+
+        # Not BER - economically repairable
+        return {
+            'is_ber': False,
+            'reason': 'Economically repairable',
+            'recommendation': 'purchase'
+        }
+
+    def calculate_value_with_repairs(self, market_value, repair_cost, category):
+        """
+        NEW CORRECT CALCULATION - No double-dipping!
+
+        When we're buying to repair:
+        - Start from market value of REPAIRED item
+        - Subtract repair costs
+        - This gives us the value we can offer
+
+        Args:
+            market_value (float): Market value in WORKING, GOOD condition
+            repair_cost (float): Cost to repair all issues
+            category (str): Product category
+
+        Returns:
+            float: Value after accounting for repairs
+        """
+
+        if not market_value or market_value <= 0:
+            return 0
+
+        # Simple math: Value after repair - Cost to repair = Our value
+        value_to_us = market_value - repair_cost
+
+        # Never go below 20% of market value (parts value floor)
+        min_value = market_value * 0.20
+        value_to_us = max(value_to_us, min_value)
+
+        print(f"\nRepair-Based Valuation:")
+        print(f"- Market Value (working condition): R{market_value:,.2f}")
+        print(f"- Repair Costs: -R{repair_cost:,.2f}")
+        print(f"- Value to Us: R{value_to_us:,.2f}")
+        print(f"- Minimum Floor (20%): R{min_value:,.2f}\n")
+
+        return round(value_to_us, 2)
+
+    def requires_device_unlock_check(self, category):
+        """
+        Check if this product type requires device unlock verification
+
+        Args:
+            category (str): Product category
+
+        Returns:
+            bool: True if device lock check is needed
+        """
+
+        lockable_categories = [
+            'phone', 'smartphone', 'mobile', 'iphone', 'android',
+            'tablet', 'ipad',
+            'laptop', 'notebook', 'macbook', 'computer',
+            'watch', 'smartwatch', 'apple watch'
+        ]
+
+        return category.lower() in lockable_categories

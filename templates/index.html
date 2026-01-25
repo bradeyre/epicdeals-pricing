@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sell Your Item - EpicDeals.co.za</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7">
 </head>
 <body>
     <div class="container">
@@ -57,16 +60,72 @@
 
         <!-- Customer Info Form -->
         <div id="customer-form" class="customer-form" style="display: none;">
-            <h3>Almost done! Just need your contact details</h3>
+            <h3>Almost done! Just need your details</h3>
             <form id="contact-form">
                 <input type="text" id="customer-name" placeholder="Your Name *" required />
                 <input type="email" id="customer-email" placeholder="Your Email *" required />
                 <input type="tel" id="customer-phone" placeholder="Your Phone Number *" required />
+                <input type="text" id="customer-address" placeholder="Collection Address *" required />
+                <label for="collection-date" style="font-size: 0.9em; color: #666; margin-top: 10px;">Preferred Collection Date *</label>
+                <input type="date" id="collection-date" required />
+                <div class="terms-checkbox">
+                    <input type="checkbox" id="terms-agreement" required />
+                    <label for="terms-agreement">
+                        I agree to the <a href="#" id="show-terms-link">Terms & Conditions</a> *
+                    </label>
+                </div>
                 <button type="submit" class="btn btn-primary">Get My Offer</button>
             </form>
         </div>
+
+        <!-- Terms & Conditions Modal -->
+        <div id="terms-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Terms & Conditions</h2>
+                <div class="terms-content">
+                    <h3>Device Condition Requirements</h3>
+                    <ul>
+                        <li><strong>Device Must Be Unlocked:</strong> The device must be unlocked from any carrier and not tied to any iCloud, Google, or other accounts. If the device is locked, you will be responsible for return shipping costs.</li>
+                        <li><strong>Accurate Description:</strong> You guarantee that the device is exactly as described and photographed during the submission process.</li>
+                        <li><strong>No Hidden Damage:</strong> You confirm that you have disclosed all damage, defects, or issues with the device. Any undisclosed issues may result in a revised offer or rejection.</li>
+                        <li><strong>Original Ownership:</strong> You confirm that you are the rightful owner of the device and have the legal right to sell it.</li>
+                    </ul>
+
+                    <h3>Return Policy</h3>
+                    <ul>
+                        <li>If the device does not match the description or is locked, we reserve the right to return it at your expense.</li>
+                        <li>Return shipping costs will be deducted from any refund or payment.</li>
+                    </ul>
+
+                    <h3>Payment Terms</h3>
+                    <ul>
+                        <li><strong>Sell Now:</strong> Payment is made within 2 working days after we receive and inspect your device.</li>
+                        <li><strong>Consignment:</strong> Payment is made within 2 working days after the buyer receives the device.</li>
+                    </ul>
+
+                    <h3>Collection & Shipping</h3>
+                    <ul>
+                        <li>For Sell Now and Consignment options, we provide free courier collection from your address.</li>
+                        <li>The device must be securely packaged for collection.</li>
+                        <li>You are responsible for the device until it is collected by our courier.</li>
+                    </ul>
+
+                    <h3>Inspection & Verification</h3>
+                    <ul>
+                        <li>All devices are subject to inspection upon receipt.</li>
+                        <li>If the device does not match the description, we reserve the right to revise the offer or decline the purchase.</li>
+                    </ul>
+
+                    <p style="margin-top: 20px; font-style: italic; color: #666;">
+                        By submitting this form, you confirm that you have read and agree to these terms and conditions.
+                    </p>
+                </div>
+                <button class="btn btn-primary close-modal-btn">Close</button>
+            </div>
+        </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=6"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=7"></script>
 </body>
 </html>

@@ -5,8 +5,8 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #2e88c9 0%, #1a5f8a 100%);
     min-height: 100vh;
     padding: 20px;
 }
@@ -21,7 +21,7 @@ body {
 }
 
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2e88c9 0%, #1a5f8a 100%);
     color: white;
     padding: 30px;
     text-align: center;
@@ -95,7 +95,7 @@ body {
 }
 
 .message.user .message-bubble {
-    background: #667eea;
+    background: #2e88c9;
     color: white;
 }
 
@@ -117,7 +117,7 @@ body {
 }
 
 #text-input:focus {
-    border-color: #667eea;
+    border-color: #2e88c9;
 }
 
 /* Buttons */
@@ -132,23 +132,23 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ff9b00 0%, #e88900 100%);
     color: white;
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 5px 15px rgba(255, 155, 0, 0.4);
 }
 
 .btn-send {
-    background: #667eea;
+    background: #ff9b00;
     color: white;
     margin-left: 10px;
 }
 
 .btn-send:hover {
-    background: #5568d3;
+    background: #e88900;
 }
 
 /* Options Area */
@@ -171,8 +171,8 @@ body {
 }
 
 .option-btn:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
+    border-color: #2e88c9;
+    background: #e3f2fd;
     transform: translateX(5px);
 }
 
@@ -201,8 +201,8 @@ body {
 }
 
 .checkbox-label:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
+    border-color: #2e88c9;
+    background: #e3f2fd;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -210,19 +210,19 @@ body {
     height: 20px;
     margin-right: 12px;
     cursor: pointer;
-    accent-color: #667eea;
+    accent-color: #2e88c9;
     flex-shrink: 0;
     margin-top: 2px;
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkbox-text {
-    color: #667eea;
+    color: #2e88c9;
     font-weight: 500;
 }
 
 .checkbox-label:has(input[type="checkbox"]:checked) {
-    border-color: #667eea;
-    background: #f8f9ff;
+    border-color: #2e88c9;
+    background: #e3f2fd;
 }
 
 .checkbox-text {
@@ -247,7 +247,7 @@ body {
     height: 50px;
     margin: 0 auto 20px;
     border: 4px solid #f3f3f3;
-    border-top: 4px solid #667eea;
+    border-top: 4px solid #2e88c9;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -266,12 +266,12 @@ body {
 .offer-amount {
     font-size: 48px;
     font-weight: bold;
-    color: #667eea;
+    color: #2e88c9;
     margin: 20px 0;
 }
 
 .offer-breakdown {
-    background: #f8f9ff;
+    background: #e3f2fd;
     padding: 20px;
     border-radius: 12px;
     margin: 20px 0;
@@ -290,14 +290,14 @@ body {
 }
 
 .breakdown-item.condition-header {
-    color: #667eea;
+    color: #2e88c9;
     font-weight: 600;
 }
 
 .breakdown-item.adjusted-value {
     font-weight: bold;
     font-size: 18px;
-    color: #667eea;
+    color: #2e88c9;
 }
 
 /* Repair Explanation */
@@ -330,7 +330,7 @@ body {
 }
 
 .offer-option {
-    background: #f8f9ff;
+    background: #e3f2fd;
     border: 2px solid #eee;
     border-radius: 12px;
     padding: 20px;
@@ -338,8 +338,8 @@ body {
 }
 
 .offer-option.consignment {
-    border-color: #667eea;
-    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+    border-color: #2e88c9;
+    background: linear-gradient(135deg, #e3f2fd 0%, #cbe7f7 100%);
 }
 
 .offer-option h3 {
@@ -353,12 +353,12 @@ body {
 .option-amount {
     font-size: 32px;
     font-weight: bold;
-    color: #667eea;
+    color: #2e88c9;
     margin: 10px 0;
 }
 
 .option-amount.highlight {
-    color: #667eea;
+    color: #2e88c9;
 }
 
 .option-description {
@@ -411,7 +411,7 @@ body {
 }
 
 .pricing-dispute a {
-    color: #667eea;
+    color: #2e88c9;
     text-decoration: none;
     font-weight: 600;
 }
@@ -453,7 +453,7 @@ body {
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2e88c9;
 }
 
 .form-group input[type="url"] {
@@ -463,7 +463,7 @@ body {
 .price-display {
     font-size: 32px;
     font-weight: bold;
-    color: #667eea;
+    color: #2e88c9;
     padding: 10px 0;
 }
 
@@ -503,7 +503,7 @@ body {
 
 .user-estimate-input input[type="number"]:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2e88c9;
 }
 
 .user-estimate-input button {
@@ -536,7 +536,7 @@ body {
 }
 
 #contact-form input:focus {
-    border-color: #667eea;
+    border-color: #2e88c9;
 }
 
 /* Animations */
@@ -593,4 +593,238 @@ body {
     padding: 20px;
     border-radius: 12px;
     margin: 20px 0;
+}
+
+/* Rejection Message */
+.rejection-message {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.rejection-message .icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.rejection-message h2 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 28px;
+}
+
+.rejection-message a {
+    color: #2e88c9;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.rejection-message a:hover {
+    text-decoration: underline;
+}
+
+/* Product Summary */
+.product-summary {
+    background: #e3f2fd;
+    border: 2px solid #2e88c9;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.product-summary h3 {
+    color: #2e88c9;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.summary-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: #666;
+}
+
+.summary-value {
+    color: #333;
+    font-weight: 500;
+}
+
+/* VAT Notice */
+.vat-notice {
+    text-align: center;
+    padding: 10px;
+    margin: 15px 0;
+}
+
+/* Terms Checkbox */
+.terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 15px;
+    background: #e3f2fd;
+    border-radius: 10px;
+    margin: 15px 0;
+}
+
+.terms-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 3px;
+    cursor: pointer;
+    accent-color: #2e88c9;
+    flex-shrink: 0;
+}
+
+.terms-checkbox label {
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.terms-checkbox a {
+    color: #2e88c9;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.terms-checkbox a:hover {
+    text-decoration: underline;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease-in;
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease-out;
+}
+
+.modal-content h2 {
+    color: #2e88c9;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.modal-content h3 {
+    color: #333;
+    margin-top: 25px;
+    margin-bottom: 12px;
+    font-size: 18px;
+}
+
+.terms-content {
+    text-align: left;
+    color: #333;
+    line-height: 1.6;
+}
+
+.terms-content ul {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.terms-content li {
+    margin: 10px 0;
+    color: #666;
+}
+
+.terms-content strong {
+    color: #333;
+}
+
+.close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: #2e88c9;
+}
+
+.close-modal-btn {
+    margin-top: 20px;
+    width: 100%;
+}
+
+/* Date Input Styling */
+#contact-form input[type="date"] {
+    padding: 15px;
+    border: 2px solid #eee;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.3s;
+    font-family: inherit;
+}
+
+#contact-form input[type="date"]:focus {
+    border-color: #2e88c9;
+}
+
+#contact-form label {
+    font-weight: 600;
+    color: #666;
+    display: block;
+}
+
+/* Responsive adjustments for modal */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        padding: 20px;
+        max-height: 85vh;
+    }
+
+    .product-summary h3 {
+        font-size: 16px;
+    }
+
+    .summary-item {
+        flex-direction: column;
+        gap: 5px;
+    }
 }
