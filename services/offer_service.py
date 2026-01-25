@@ -156,17 +156,17 @@ class OfferService:
                     'market_value': market_value,
                     'repair_costs': repair_costs,
                     'adjusted_value': adjusted_value,
-                    'offer_percentage': self.offer_percentage,
+                    'sell_now_percentage': self.sell_now_percentage,
                     'final_offer': offer_amount
                 },
                 'confidence': price_research.get('confidence', 0),
                 'recommendation': 'email_review',
                 'reason': f'Offer amount (R{offer_amount:,.2f}) below minimum threshold (R{Config.MIN_ITEM_VALUE:,})',
                 'price_research': price_research,
-                'repair_estimate': repair_estimate
+                'repair_estimate': repair_research
             }
 
-        if offer_amount > Config.MAX_ITEM_VALUE * self.offer_percentage:
+        if offer_amount > Config.MAX_ITEM_VALUE * self.sell_now_percentage:
             return {
                 'offer_amount': offer_amount,
                 'market_value': market_value,
@@ -175,14 +175,14 @@ class OfferService:
                     'market_value': market_value,
                     'repair_costs': repair_costs,
                     'adjusted_value': adjusted_value,
-                    'offer_percentage': self.offer_percentage,
+                    'sell_now_percentage': self.sell_now_percentage,
                     'final_offer': offer_amount
                 },
                 'confidence': price_research.get('confidence', 0),
                 'recommendation': 'email_review',
                 'reason': f'Offer amount (R{offer_amount:,.2f}) above maximum threshold',
                 'price_research': price_research,
-                'repair_estimate': repair_estimate
+                'repair_estimate': repair_research
             }
 
         # Step 5: Calculate consignment option
@@ -209,8 +209,8 @@ class OfferService:
         # Step 6: Determine if we should make instant offer or email for review
         overall_confidence = self._calculate_overall_confidence(
             price_research.get('confidence', 0),
-            repair_estimate.get('confidence', 1.0),
-            price_research.get('total_listings', 0)
+            repair_research.get('confidence', 1.0),
+            len(price_research.get('prices_found', []))
         )
 
         if overall_confidence >= Config.CONFIDENCE_THRESHOLD:
@@ -218,7 +218,7 @@ class OfferService:
             reason = 'High confidence in pricing and repair cost estimates'
         else:
             recommendation = 'email_review'
-            reason = self._determine_review_reason(price_research, repair_estimate, overall_confidence)
+            reason = self._determine_review_reason(price_research, repair_research, overall_confidence)
 
         return {
             'offer_amount': offer_amount,

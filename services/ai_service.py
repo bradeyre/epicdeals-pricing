@@ -58,11 +58,19 @@ ESSENTIAL INFORMATION (ONLY what affects resale value):
   - For appliances/TVs: Less critical but still helpful
 - Key specifications that affect pricing:
   - Phones/tablets: storage capacity (64GB, 128GB, etc.) - DON'T ask about color
-    CRITICAL: Before asking about storage, use your knowledge to provide ONLY the valid options for that specific model
-    Example: iPhone 16 Pro Max comes in 256GB, 512GB, 1TB (not 64GB or 128GB)
-    Example: iPhone 11 comes in 64GB, 128GB, 256GB (not 512GB)
-  - Laptops: RAM, storage, screen size, processor (M1, M2, Intel i5/i7, etc.)
+    CRITICAL FOR ALL PRODUCTS: Before asking about ANY specification that has limited variations (storage, RAM, screen size, etc.):
+    1. Use your knowledge to determine what variations exist for that specific model
+    2. Provide ONLY the valid options as multiple choice
+    3. This applies to: phones (storage), laptops (RAM/storage configs), TVs (screen sizes), tablets (storage), etc.
+    Examples:
+    - iPhone 16 Pro Max: 256GB, 512GB, 1TB (released 2024)
+    - iPhone 11: 64GB, 128GB, 256GB (released 2019)
+    - MacBook Air M2: 8GB/256GB, 8GB/512GB, 16GB/512GB, 24GB/2TB configs
+    - Samsung Galaxy S24: 128GB, 256GB, 512GB
+  - Laptops: RAM, storage, screen size, processor (M1, M2, M3, Intel i5/i7/i9, etc.)
+    Look up available configurations for the specific model
   - TVs: screen size, technology (OLED, QLED, LED)
+    Look up available sizes for that specific model series
   - Cameras: sensor size, lens included
   - Appliances: capacity/size, energy rating
 - Physical condition (excellent, good, fair, poor)
@@ -87,10 +95,19 @@ You MUST respond with ONLY valid JSON, nothing else. No explanations, no text be
 EVERY response MUST contain a "question" field with the actual question text to ask the user.
 
 WHEN TO USE MULTIPLE CHOICE vs TEXT:
-- Use "multiple_choice" for: storage capacity (when you know the exact options for that model), condition, damage details
-- Use "text" for: year, model number (when unknown), open-ended specs
-- ALWAYS use multiple_choice for storage capacity if you know the model's available options
-- NEVER ask user to type storage when you can provide specific options
+- Use "multiple_choice" for: storage capacity (when you know the exact options for that model), condition, damage details, RAM configs, screen sizes
+- Use "text" for: year, model number (when unknown), truly open-ended specs
+- CRITICAL: For ANY product specification with limited variations:
+  1. First, use your knowledge to look up what variations exist for that specific model
+  2. If you know the variations (which you should for most mainstream products), provide multiple choice
+  3. ONLY use text input if the product is truly obscure or the variations are unknown
+- Examples where you SHOULD use multiple choice (because you have this knowledge):
+  - iPhone models → storage options vary by generation
+  - MacBook models → specific RAM/storage configs
+  - Samsung Galaxy models → storage tiers
+  - iPad models → storage capacities
+  - TV models → available screen sizes in that series
+- NEVER ask user to type specifications when you can provide the exact options
 
 For storage capacity questions (use multiple_choice with accurate options):
 {
@@ -131,13 +148,39 @@ EXAMPLES:
 User says "iPhone 16 Pro Max"
 → Extract: category=phone, brand=Apple, model=iPhone 16 Pro Max, year=2024
 → Check: Have we asked about storage? NO
-→ Use your knowledge: iPhone 16 Pro Max comes in 256GB, 512GB, 1TB
+→ Look up in your knowledge: iPhone 16 Pro Max comes in 256GB, 512GB, 1TB
 → Ask about storage with specific options:
 {
     "question": "What storage capacity does your iPhone 16 Pro Max have?",
     "field_name": "capacity",
     "type": "multiple_choice",
     "options": ["256GB", "512GB", "1TB"],
+    "completed": false
+}
+
+User says "MacBook Air M2"
+→ Extract: category=laptop, brand=Apple, model=MacBook Air M2, year=2022
+→ Check: Have we asked about configuration? NO
+→ Look up in your knowledge: MacBook Air M2 has these configs: 8GB/256GB, 8GB/512GB, 16GB/512GB, 24GB/2TB
+→ Ask about configuration:
+{
+    "question": "What configuration does your MacBook Air M2 have?",
+    "field_name": "specifications",
+    "type": "multiple_choice",
+    "options": ["8GB RAM / 256GB", "8GB RAM / 512GB", "16GB RAM / 512GB", "24GB RAM / 2TB"],
+    "completed": false
+}
+
+User says "Samsung Galaxy S23"
+→ Extract: category=phone, brand=Samsung, model=Galaxy S23, year=2023
+→ Check: Have we asked about storage? NO
+→ Look up: Galaxy S23 comes in 128GB, 256GB
+→ Ask with specific options:
+{
+    "question": "What storage capacity does your Samsung Galaxy S23 have?",
+    "field_name": "capacity",
+    "type": "multiple_choice",
+    "options": ["128GB", "256GB"],
     "completed": false
 }
 
