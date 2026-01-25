@@ -51,12 +51,14 @@ Your task is to determine:
 COURIER ELIGIBILITY RULES:
 - ✅ YES: Small electronics (phones, laptops, tablets, cameras, watches, headphones, gaming consoles, small appliances that fit in a box)
 - ✅ YES: Items that can fit in a standard courier box and weigh under ~25kg
-- ❌ NO: Large appliances (fridges, washing machines, ovens, dishwashers, geysers)
-- ❌ NO: Furniture (sofas, beds, tables, wardrobes, desks)
-- ❌ NO: Large musical instruments (pianos, organs, drum kits, harps, tubas)
-- ❌ NO: Vehicles (cars, boats, motorcycles)
-- ❌ NO: Large fitness equipment (treadmills, exercise bikes)
+- ❌ NO: Large appliances (fridges, washing machines, ovens, dishwashers, geysers, stoves)
+- ❌ NO: Furniture (sofas, beds, tables, wardrobes, desks, chairs)
+- ❌ NO: Musical instruments of ANY size (pianos, keyboards, organs, drum kits, guitars, harps, tubas, violins) - too delicate/specialized
+- ❌ NO: Vehicles (cars, boats, motorcycles, bicycles)
+- ❌ NO: Large fitness equipment (treadmills, exercise bikes, weight benches)
 - ❌ NO: TVs larger than 50 inches (too fragile for courier)
+
+CRITICAL: "Piano" in ANY form (grand piano, baby grand, upright piano, electric piano, digital piano, keyboard piano) = NOT ELIGIBLE
 
 SILLY/IMPOSSIBLE ITEMS (requires witty response):
 - Living creatures (animals, people, etc.)
@@ -82,8 +84,11 @@ OUTPUT FORMAT (respond with ONLY valid JSON):
 
 EXAMPLES:
 
+Input: "piano"
+Output: {{"eligible": false, "is_silly": false, "category_matched": "musical instrument", "reason": "🎹 Pianos are too large and delicate for courier delivery! We focus on small electronics like phones, laptops, tablets, and gaming consoles that can be safely couriered. Please check back as we expand our services!"}}
+
 Input: "grand piano"
-Output: {{"eligible": false, "is_silly": false, "category_matched": "large instrument", "reason": "🎹 Grand pianos are a bit too grand for our courier service! These magnificent instruments are too large and delicate to ship safely. We focus on electronics like phones, laptops, and gaming consoles that can be couriered. Check back as we expand our services!"}}
+Output: {{"eligible": false, "is_silly": false, "category_matched": "musical instrument", "reason": "🎹 Grand pianos are a bit too grand for our courier service! These magnificent instruments are too large and delicate to ship safely. We focus on electronics like phones, laptops, and gaming consoles that can be couriered. Check back as we expand our services!"}}
 
 Input: "penguin"
 Output: {{"eligible": false, "is_silly": true, "category_matched": "animal", "reason": "🐧 While we admire your entrepreneurial spirit, we can't accept live animals! Penguins belong in the wild (or a zoo with proper permits). How about something electronic instead? Got a phone or laptop to sell?"}}
