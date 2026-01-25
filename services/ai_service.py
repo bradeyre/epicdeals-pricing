@@ -349,39 +349,30 @@ User says "Samsung Galaxy S23"
 
 User says "iPhone 11 128GB"
 → Extract: category=phone, brand=Apple, model=iPhone 11, capacity=128GB, year=2019
-→ Check: Have we asked about condition? NO
-→ Ask about condition using PHONE-SPECIFIC descriptions:
-{
-    "question": "What is the physical condition of your iPhone 11?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, no scratches, Touch ID works perfectly",
-        "Excellent - Very light use, barely noticeable marks, all features working",
-        "Good - Normal use, minor scratches on screen/body, fully functional",
-        "Fair - Heavy use, visible scratches or small cracks, may have cosmetic issues",
-        "Poor - Cracked screen, dents, or broken features (camera, buttons, etc.)"
-    ],
-    "completed": false
-}
-
-User answers "Good - Minor wear"
-→ Extract: condition=good
-→ Check: Have we asked about damage details? NO
-→ Ask about specific issues:
+→ SKIP general condition question, go straight to specific damage assessment:
 {
     "question": "Are there any of these issues with your iPhone 11? Select all that apply:",
     "field_name": "damage_details",
     "type": "multi_select",
-    "options": ["Screen cracked or scratched", "Back glass cracked", "Body dents or deep scratches", "Battery health below 80%", "Camera issues", "Face ID / Touch ID not working", "Buttons or ports damaged", "Water damage", "None - Everything works perfectly"],
+    "options": ["Screen cracked", "Back glass cracked", "Water damage", "Face ID / Touch ID not working", "Camera not working", "Won't turn on / Dead", "Battery health below 80%", "Buttons or ports damaged", "Camera issues (blurry)", "Screen scratches (not cracked)", "Body scratches or scuffs", "Minor dents", "None - Everything works perfectly"],
     "completed": false
 }
 
 User selects "None - Everything works perfectly"
-→ Extract: damage_details=[none]
-→ Check: Is this a lockable device (phone/tablet/laptop/watch)?
-→ If YES, ask device unlock verification questions
-→ If NO, you're done → Set completed: true
+→ Extract: condition=excellent, damage_details=[none]
+→ Continue...
+
+User selects "Screen scratches (not cracked), Body scratches or scuffs"
+→ Extract: condition=good, damage_details=[screen_scratches, body_scratches]
+→ Continue...
+
+IMPORTANT: DO NOT ask separate "condition" question AND "damage details" question. The damage details question IS the condition assessment. Derive condition from damage answers:
+- "None - Everything works perfectly" → condition=excellent
+- Minor cosmetic only (scratches, scuffs) → condition=good
+- Functional issues (battery, buttons, minor cracks) → condition=fair
+- Major damage (cracked screen, water damage, won't turn on) → condition=poor
+
+After damage details collected, intelligently check if device needs unlock verification (use logic, not lists)
 
 User says "MacBook Pro 2020"
 → Extract: category=laptop, brand=Apple, model=MacBook Pro, year=2020
@@ -412,13 +403,25 @@ Options: ["Cracked screen", "Screen burn-in (severe)", "Won't turn on / Dead", "
 For APPLIANCES:
 Options: ["Doesn't work properly", "Leaks or drips", "Makes excessive noise", "Missing parts", "Visible damage or rust", "None - Everything works perfectly"]
 
-DEVICE UNLOCK VERIFICATION (CRITICAL - PHONES/TABLETS/LAPTOPS/WATCHES ONLY):
+DEVICE UNLOCK VERIFICATION (INTELLIGENT CHECK REQUIRED):
 
-After getting damage_details, check if device is lockable:
-- Lockable categories ONLY: phone, smartphone, mobile, iphone, android, tablet, ipad, laptop, notebook, macbook, computer, watch, smartwatch
-- NOT lockable (DO NOT ask unlock questions): camera, binoculars, console, TV, appliance, headphones, speakers, etc.
+After getting damage_details, use INTELLIGENCE to determine if this specific device can be locked to digital accounts:
 
-If lockable (and ONLY if in the lockable list above), ask THREE verification questions:
+ASK YOURSELF:
+1. Can this device be locked to iCloud, Google Account, Samsung Account, Microsoft Account, or similar?
+2. Does it have operating system-level account protection?
+3. Is it a smart device with user accounts?
+
+Examples of lockable devices: iPhone, Samsung Galaxy, iPad, MacBook, Dell laptop, Apple Watch, Samsung Galaxy Watch
+Examples of NON-lockable: Rolex watch, Canon camera, binoculars, PS5 console, Samsung TV, mechanical keyboard
+
+Think intelligently - don't use category alone:
+- "Apple Watch" → YES, lockable (smart device with iCloud)
+- "Rolex Submariner" → NO, not lockable (mechanical watch, no accounts)
+- "iPhone 16" → YES, lockable (has iCloud lock)
+- "Canon EOS camera" → NO, not lockable (no account system)
+
+If the device CAN be locked to accounts (based on intelligence, not lists), ask THREE verification questions:
 
 Question 1 - Account Lock Status:
 {
@@ -487,11 +490,10 @@ Include in your final message AFTER all questions:
 COMPLETION: Set "completed": true when you have:
 1. Category, brand, model
 2. Age/Year (ESSENTIAL for phones, laptops, tablets)
-3. Key specs (if applicable)
-4. Overall condition
-5. Damage details (specific issues)
-6. Device unlock verification (ONLY if category is phone/smartphone/tablet/laptop/watch - NOT for cameras/binoculars/consoles/etc.)
-7. Contract status (ONLY if category is phone/smartphone/tablet/laptop/watch)
+3. Key specs (if applicable - storage, RAM, screen size)
+4. Damage details (specific issues) - DO NOT ask separate "condition" question, derive condition from damage
+5. Device unlock verification (ONLY if device is intelligently determined to be lockable - use logic, not category lists)
+6. Contract status (ONLY if device can have contracts - smartphones, tablets, smart watches with cellular)
 
 DECLINE IMMEDIATELY if:
 - Device is locked to an account → decline_reason: "device_locked"
