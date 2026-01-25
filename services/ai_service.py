@@ -273,9 +273,18 @@ Options: ["Cracked screen", "Screen burn-in (severe)", "Won't turn on / Dead", "
 For APPLIANCES:
 Options: ["Doesn't work properly", "Leaks or drips", "Makes excessive noise", "Missing parts", "Visible damage or rust", "None - Everything works perfectly"]
 
+CRITICAL QUESTION ORDER:
+1. First: Category, brand, model (from initial input)
+2. Then: Age/Year (if needed)
+3. Then: Key specs (storage, RAM, etc.)
+4. Then: DAMAGE DETAILS (MANDATORY - never skip this!)
+5. Finally: Device unlock verification (only if lockable)
+
+NEVER skip damage assessment - it must come BEFORE unlock verification!
+
 DEVICE UNLOCK VERIFICATION (INTELLIGENT CHECK REQUIRED):
 
-After getting damage_details, use INTELLIGENCE to determine if this specific device can be locked to digital accounts:
+After getting damage_details (and ONLY after damage_details), use INTELLIGENCE to determine if this specific device can be locked to digital accounts:
 
 ASK YOURSELF:
 1. Can this device be locked to iCloud, Google Account, Samsung Account, Microsoft Account, or similar?
@@ -385,7 +394,9 @@ COMPLETION: Set "completed": true when you have:
 5. Device unlock verification (ONLY if device is intelligently determined to be lockable - use logic, not category lists)
 6. Contract status (ONLY if device can have contracts - smartphones, tablets, smart watches with cellular)
 
-COMPLETION EXAMPLE - After user answers last question (unlock/contract), return EXACTLY this format:
+COMPLETION EXAMPLES - After user answers last question (unlock/contract), return EXACTLY this format:
+
+Example 1 - Simple completion (no lockable device):
 {
     "question": "",
     "field_name": "",
@@ -393,10 +404,31 @@ COMPLETION EXAMPLE - After user answers last question (unlock/contract), return 
     "completed": true
 }
 
-CRITICAL JSON FORMAT RULES:
-- Use lowercase "true" and "false" (NOT "True" or "False")
-- Use double quotes for strings (NOT single quotes)
-- Do NOT include any text before or after the JSON
+Example 2 - Completion with penalty warning (lockable device):
+{
+    "question": "",
+    "field_name": "",
+    "type": "text",
+    "completed": true,
+    "penalty_info": "Please note: If your device arrives locked to an account, you'll need to either: 1. Unlock it remotely and pay a R550 verification fee, OR 2. Pay R550 for us to return the device to you"
+}
+
+CRITICAL JSON FORMAT RULES - FOLLOW EXACTLY:
+1. Use lowercase "true" and "false" (NOT "True" or "False" - Python style will break parsing!)
+2. Use double quotes for strings (NOT single quotes)
+3. Do NOT include any text before or after the JSON
+4. NEVER use Python boolean literals (True/False) - always use JSON (true/false)
+5. Empty strings must be "" not ''
+
+WRONG EXAMPLES (DO NOT USE):
+{"completed": True}  ❌ Python boolean
+{"completed": False, 'field': 'value'}  ❌ Single quotes
+{'question': "text"}  ❌ Single quotes on keys
+
+CORRECT EXAMPLES (USE THESE):
+{"completed": true}  ✅ JSON boolean
+{"completed": false, "field": "value"}  ✅ Double quotes
+{"question": "text"}  ✅ Double quotes on keys
 
 DO NOT ask any more questions after all requirements met. Just return completed: true with empty question.
 
@@ -445,9 +477,23 @@ CONVERSATION HISTORY (check for duplicate questions):
         if json_match:
             response_text = json_match.group(0)
 
+        # FIX: Replace Python-style booleans with JSON booleans before parsing
+        response_text = response_text.replace(': True', ': true')
+        response_text = response_text.replace(': False', ': false')
+        response_text = response_text.replace(':True', ':true')
+        response_text = response_text.replace(':False', ':false')
+
         try:
             result = json.loads(response_text)
-            print(f"DEBUG AI_SERVICE: Raw AI response: {result}")
+            print(f"\n{'='*60}")
+            print(f"DEBUG AI_SERVICE: Successfully parsed JSON")
+            print(f"   Question: {result.get('question', 'N/A')}")
+            print(f"   Field: {result.get('field_name', 'N/A')}")
+            print(f"   Type: {result.get('type', 'N/A')}")
+            print(f"   Completed: {result.get('completed', 'N/A')}")
+            if 'penalty_info' in result:
+                print(f"   Penalty info included: Yes")
+            print(f"{'='*60}\n")
 
             # Ensure type field exists
             if 'type' not in result:
@@ -456,7 +502,6 @@ CONVERSATION HISTORY (check for duplicate questions):
             if 'completed' not in result:
                 result['completed'] = False
 
-            print(f"DEBUG AI_SERVICE: Processed result: {result}")
             return result
         except json.JSONDecodeError as e:
             # Fallback if AI doesn't return proper JSON
