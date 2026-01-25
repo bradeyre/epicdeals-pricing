@@ -503,7 +503,10 @@ class EpicDealsApp {
     }
 
     formatNumber(num) {
-        return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (num === null || num === undefined || isNaN(num)) {
+            return '0.00';
+        }
+        return Number(num).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
     formatRepairExplanation(explanation) {

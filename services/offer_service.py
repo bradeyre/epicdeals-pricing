@@ -227,6 +227,8 @@ class OfferService:
             'repair_explanation': repair_explanation,  # NEW: Transparent breakdown!
             'after_condition': after_condition,  # Value after condition multiplier
             'adjusted_value': adjusted_value,  # Final value after repairs
+            'sell_now_offer': sell_now_offer,  # For frontend display
+            'consignment_payout': consignment_payout,  # For frontend display
             'calculation_breakdown': {
                 'market_value': market_value,
                 'condition': condition,
