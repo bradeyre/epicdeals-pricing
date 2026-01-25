@@ -169,123 +169,8 @@ CONDITION LEVELS (always use these 5 levels):
 4. Fair - Heavy use
 5. Poor - Significant damage
 
-PRODUCT-SPECIFIC EXAMPLES:
-
-For phones/tablets (iPhone, Samsung, iPad, etc.):
-{
-    "question": "What is the physical condition of your iPhone 16 Pro Max?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, no scratches, Face ID/Touch ID works perfectly",
-        "Excellent - Very light use, barely noticeable marks, all features working",
-        "Good - Normal use, minor scratches on screen/body, fully functional",
-        "Fair - Heavy use, visible scratches or small cracks, may have cosmetic issues",
-        "Poor - Cracked screen, dents, or broken features (camera, buttons, etc.)"
-    ],
-    "completed": false
-}
-
-For laptops (MacBook, Dell, HP, etc.):
-{
-    "question": "What is the physical condition of your MacBook Pro?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, no scratches, keyboard/trackpad perfect, screen flawless",
-        "Excellent - Very light use, minor marks, all keys and ports working",
-        "Good - Normal use, some scratches/scuffs, keyboard and screen functional",
-        "Fair - Heavy use, visible wear, possible keyboard/trackpad issues",
-        "Poor - Cracked screen, broken keys, hinge issues, or major cosmetic damage"
-    ],
-    "completed": false
-}
-
-For cameras (Canon, Nikon, Sony, etc.):
-{
-    "question": "What is the physical condition of your Canon EOS R5?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, lens clear, no fungus, shutter count under 5000",
-        "Excellent - Very light use, minor body marks, lens clean, low shutter count",
-        "Good - Normal use, some body wear, lens clear, autofocus working",
-        "Fair - Heavy use, visible wear, possible sensor dust, high shutter count",
-        "Poor - Scratched lens, fungus, broken autofocus, or shutter issues"
-    ],
-    "completed": false
-}
-
-For gaming consoles (PS5, Xbox, Switch, etc.):
-{
-    "question": "What is the physical condition of your PlayStation 5?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, no scratches, all ports working, quiet operation",
-        "Excellent - Very light use, minor marks, disc drive working, controllers included",
-        "Good - Normal use, some scuffs, fully functional, reads discs properly",
-        "Fair - Heavy use, visible wear, possible fan noise or disc read issues",
-        "Poor - Cosmetic damage, overheating, disc drive broken, or HDMI port issues"
-    ],
-    "completed": false
-}
-
-For TVs (Samsung, LG, Sony, etc.):
-{
-    "question": "What is the physical condition of your Samsung TV?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, perfect screen, no dead pixels, remote included",
-        "Excellent - Very light use, screen perfect, all inputs working",
-        "Good - Normal use, screen good, minor frame scuffs, fully functional",
-        "Fair - Heavy use, possible minor screen issues, cosmetic wear",
-        "Poor - Screen damage, dead pixels, burn-in, or broken ports"
-    ],
-    "completed": false
-}
-
-For watches (Apple Watch, Samsung Galaxy Watch, etc.):
-{
-    "question": "What is the physical condition of your Apple Watch?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, no scratches on screen/case, band included",
-        "Excellent - Very light use, minor marks, screen clear, all sensors working",
-        "Good - Normal use, some scratches, screen readable, heart rate/GPS working",
-        "Fair - Heavy use, visible scratches, possible screen cracks, charging works",
-        "Poor - Cracked screen, deep scratches, sensors broken, or won't charge"
-    ],
-    "completed": false
-}
-
-IMPORTANT: Adapt the descriptions based on:
-- What typically wears out or breaks for that product
-- What buyers care most about for that category
-- Common issues specific to that product type
-- Keep descriptions concise but specific
-
-FOR OTHER PRODUCT TYPES NOT LISTED ABOVE:
-Use your knowledge to create relevant condition descriptions.
-
-Examples:
-- Headphones: mention sound quality, cushion wear, connectivity
-- Drones: mention flight time, camera quality, propeller condition
-- Appliances: mention functionality, cosmetic condition, energy efficiency
-- Musical instruments: mention sound quality, tuning, physical condition
-- Furniture: mention upholstery, frame condition, structural integrity
-
-CRITICAL: NEVER use generic "no visible wear" descriptions. ALWAYS make them product-specific!
-
-When conversation is complete:
-{
-    "question": "",
-    "field_name": "",
-    "type": "text",
-    "completed": true
-}
+CRITICAL: DO NOT ASK SEPARATE CONDITION QUESTION!
+Skip general "condition" questions entirely. Go straight to specific damage assessment.
 
 EXAMPLES:
 
@@ -302,24 +187,9 @@ User says "iPhone 16 Pro Max"
     "completed": false
 }
 
-User says "iPhone 16 Pro Max 512GB"
-→ Extract: category=phone, brand=Apple, model=iPhone 16 Pro Max, capacity=512GB, year=2024
-→ Check: Do we have storage? YES (512GB already provided!)
-→ Check: Do we have condition? NO
-→ Skip storage question, ask about condition with PHONE-SPECIFIC descriptions:
-{
-    "question": "What is the physical condition of your iPhone 16 Pro Max?",
-    "field_name": "condition",
-    "type": "multiple_choice",
-    "options": [
-        "Pristine - Like new, no scratches, Face ID works perfectly",
-        "Excellent - Very light use, barely noticeable marks, all features working",
-        "Good - Normal use, minor scratches on screen/body, fully functional",
-        "Fair - Heavy use, visible scratches or small cracks, may have cosmetic issues",
-        "Poor - Cracked screen, dents, or broken features (camera, buttons, etc.)"
-    ],
-    "completed": false
-}
+User answers "512GB"
+→ Extract: capacity=512GB
+→ Now SKIP condition question, go DIRECTLY to damage assessment
 
 User says "MacBook Air M2"
 → Extract: category=laptop, brand=Apple, model=MacBook Air M2, year=2022
@@ -424,8 +294,28 @@ Think intelligently - don't use category alone:
 If the device CAN be locked to accounts (based on intelligence, not lists), ask THREE verification questions:
 
 Question 1 - Account Lock Status:
+Use INTELLIGENCE to mention only RELEVANT accounts for this specific device:
+- iPhone/iPad/MacBook/Apple Watch → mention only "iCloud"
+- Samsung phone/tablet/watch → mention only "Google Account and Samsung Account"
+- Other Android phones → mention only "Google Account"
+- Windows laptop → mention only "Microsoft Account"
+- Multi-brand (unsure) → use generic "any accounts"
+
+Examples:
 {
-    "question": "Is your [Product] unlocked from all accounts (iCloud, Google, Samsung, Microsoft)?",
+    "question": "Is your iPhone 16 Pro Max unlocked from iCloud?",
+    "field_name": "device_unlocked",
+    "type": "multiple_choice",
+    "options": [
+        "Yes - Fully unlocked from iCloud",
+        "No - Still locked to iCloud",
+        "Not sure"
+    ],
+    "completed": false
+}
+
+{
+    "question": "Is your Samsung Galaxy S24 unlocked from all accounts (Google and Samsung)?",
     "field_name": "device_unlocked",
     "type": "multiple_choice",
     "options": [
