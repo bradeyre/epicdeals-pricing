@@ -43,73 +43,80 @@ def is_courier_eligible(product_info: dict) -> dict:
 
 ITEM DESCRIPTION: "{full_text}"
 
-Your task is to determine:
-1. Can this item be safely couriered? (Consider size, weight, fragility, practicality)
-2. Is this a silly/impossible/inappropriate item?
-3. Generate a witty, engaging response message
+THE CORE RULE - USE YOUR INTELLIGENCE:
+Ask yourself: "Can this item fit in a courier bag or small parcel box, and be safely shipped by a standard courier service?"
 
-COURIER ELIGIBILITY RULES:
-- ✅ YES: Small electronics (phones, laptops, tablets, cameras, watches, headphones, gaming consoles, small appliances that fit in a box)
-- ✅ YES: Items that can fit in a standard courier box and weigh under ~25kg
-- ❌ NO: Large appliances (fridges, washing machines, ovens, dishwashers, geysers, stoves)
-- ❌ NO: Furniture (sofas, beds, tables, wardrobes, desks, chairs)
-- ❌ NO: Musical instruments of ANY size (pianos, keyboards, organs, drum kits, guitars, harps, tubas, violins) - too delicate/specialized
-- ❌ NO: Vehicles (cars, boats, motorcycles, bicycles)
-- ❌ NO: Large fitness equipment (treadmills, exercise bikes, weight benches)
-- ❌ NO: TVs larger than 50 inches (too fragile for courier)
+If YES → eligible: true
+If NO → eligible: false
 
-CRITICAL: "Piano" in ANY form (grand piano, baby grand, upright piano, electric piano, digital piano, keyboard piano) = NOT ELIGIBLE
+THINK ABOUT:
+1. SIZE: Can it fit in a courier bag or box that one person can carry? (Roughly: smaller than 60cm x 40cm x 40cm)
+2. WEIGHT: Can one person lift it? (Under ~25kg)
+3. FRAGILITY: Is it robust enough to survive standard courier handling in a box?
+4. PRACTICALITY: Would a normal courier service accept this item?
 
-SILLY/IMPOSSIBLE ITEMS (requires witty response):
-- Living creatures (animals, people, etc.)
-- Fictional items (unicorns, dragons, lightsabers, time machines, etc.)
-- Illegal/inappropriate items (weapons, drugs, organs, etc.)
-- Absurd items (spaceships, submarines, tanks, nuclear anything, etc.)
-- Real estate (houses, buildings, land)
+EXAMPLES OF YOUR THINKING PROCESS:
+
+"Piano" → Think: Pianos are large, heavy instruments. Even small keyboards are bulky. Cannot fit in courier bag. NOT ELIGIBLE.
+
+"Refrigerator" → Think: Large appliance, very heavy, requires special delivery. NOT ELIGIBLE.
+
+"BMW" → Think: A car cannot be couriered. Absurd. NOT ELIGIBLE.
+
+"Elephant" → Think: Living creature, massive, absurd to courier. SILLY and NOT ELIGIBLE.
+
+"iPhone 11" → Think: Small phone, fits in hand, lightweight, can be safely packed in small box. ELIGIBLE.
+
+"Laptop" → Think: Portable computer, designed to be carried, fits in courier box. ELIGIBLE.
+
+"Couch" → Think: Large furniture, heavy, requires furniture movers. NOT ELIGIBLE.
+
+"Guitar" → Think: Musical instrument, bulky, delicate neck, too large for standard courier box. NOT ELIGIBLE.
+
+"Headphones" → Think: Small, lightweight, fits in bag. ELIGIBLE.
+
+SILLY/IMPOSSIBLE ITEMS (use common sense):
+- Living creatures (animals, people, plants)
+- Fictional things (unicorns, dragons, lightsabers, magic wands)
+- Illegal items (drugs, weapons, organs)
+- Absurd things (buildings, vehicles, aircraft, boats, rockets)
 
 RESPONSE TONE:
-- For SILLY items: Be witty, humorous, and playful while redirecting to actual electronics
-- For NON-COURIER items: Be friendly, apologetic, and professional
-- For INAPPROPRIATE items: Be firm but not preachy
-- Always use emojis to make responses engaging
-- Keep responses concise (2-3 sentences max)
+- For SILLY items: Be witty and playful, redirect to real electronics
+- For LARGE items: Be friendly and apologetic, explain we only accept courier-friendly items
+- For INAPPROPRIATE items: Be firm but brief
+- Use emojis, keep responses 2-3 sentences max
 
 OUTPUT FORMAT (respond with ONLY valid JSON):
 {{
     "eligible": true/false,
     "is_silly": true/false,
-    "category_matched": "brief descriptor of what was detected",
-    "reason": "Your witty/friendly message here"
+    "category_matched": "brief descriptor",
+    "reason": "Your message"
 }}
 
 EXAMPLES:
 
 Input: "piano"
-Output: {{"eligible": false, "is_silly": false, "category_matched": "musical instrument", "reason": "🎹 Pianos are too large and delicate for courier delivery! We focus on small electronics like phones, laptops, tablets, and gaming consoles that can be safely couriered. Please check back as we expand our services!"}}
+Output: {{"eligible": false, "is_silly": false, "category_matched": "large instrument", "reason": "🎹 Pianos are too large for courier delivery! We only accept items that fit in a courier bag or small box. We buy phones, laptops, tablets, cameras, and other small electronics. Please check back as we expand!"}}
 
-Input: "grand piano"
-Output: {{"eligible": false, "is_silly": false, "category_matched": "musical instrument", "reason": "🎹 Grand pianos are a bit too grand for our courier service! These magnificent instruments are too large and delicate to ship safely. We focus on electronics like phones, laptops, and gaming consoles that can be couriered. Check back as we expand our services!"}}
+Input: "washing machine"
+Output: {{"eligible": false, "is_silly": false, "category_matched": "large appliance", "reason": "We only accept items that can be couriered in a bag or small box. Large appliances like washing machines require special delivery. We buy phones, laptops, cameras, and other small electronics!"}}
 
-Input: "penguin"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "animal", "reason": "🐧 While we admire your entrepreneurial spirit, we can't accept live animals! Penguins belong in the wild (or a zoo with proper permits). How about something electronic instead? Got a phone or laptop to sell?"}}
+Input: "elephant"
+Output: {{"eligible": false, "is_silly": true, "category_matched": "animal", "reason": "🐘 We definitely can't courier elephants! We buy small electronics like phones, laptops, and tablets. Got any of those instead?"}}
+
+Input: "BMW"
+Output: {{"eligible": false, "is_silly": true, "category_matched": "vehicle", "reason": "🚗 Cars can't be couriered! We buy small electronics like phones, laptops, cameras, and gaming consoles that fit in a box. Got something like that?"}}
 
 Input: "iPhone 11"
 Output: {{"eligible": true, "is_silly": false, "category_matched": "phone", "reason": "Item can be couriered"}}
 
-Input: "unicorn"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "mythical creature", "reason": "🦄 If you actually have a unicorn, you should probably contact a mythical creature preservation society! For now, we only buy real-world electronics and gadgets. Got an iPhone or gaming console instead?"}}
-
-Input: "washing machine"
-Output: {{"eligible": false, "is_silly": false, "category_matched": "large appliance", "reason": "Unfortunately, we currently only accept items that can be couriered. We're unable to process large appliances like washing machines at this time. We buy phones, laptops, cameras, and other electronics that fit in a box. Please check back in the future as we expand our services!"}}
-
-Input: "time machine"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "fictional device", "reason": "⏰ If you had a working time machine, you could go back and get a better price! For now, we only buy electronics from this timeline. How about a phone, tablet, or gaming console?"}}
-
-Input: "kidney"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "human organ", "reason": "🏥 We're definitely not buying organs! That's highly illegal and extremely concerning. We buy phones, laptops, cameras, and other electronics only. Please contact appropriate authorities if you need help."}}
-
 Input: "MacBook Pro"
 Output: {{"eligible": true, "is_silly": false, "category_matched": "laptop", "reason": "Item can be couriered"}}
+
+Input: "unicorn"
+Output: {{"eligible": false, "is_silly": true, "category_matched": "mythical creature", "reason": "🦄 Unfortunately, mythical creatures aren't real! We buy actual electronics like phones, laptops, and tablets. Got any of those?"}}
 
 Now analyze this item and respond with ONLY valid JSON:"""
 
