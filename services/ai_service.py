@@ -553,7 +553,7 @@ CONVERSATION HISTORY (check for duplicate questions):
         except json.JSONDecodeError as e:
             # Fallback if AI doesn't return proper JSON
             return {
-                "question": "What type of item do you want to sell? (e.g., iPhone 11, MacBook Pro, Samsung TV)",
+                "question": "What type of item do you want to sell?",
                 "field_name": "item_description",
                 "type": "text",
                 "completed": False

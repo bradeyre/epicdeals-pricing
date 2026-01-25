@@ -51,20 +51,25 @@ ASK YOURSELF:
 1. Can this item fit in a standard courier bag or small box?
 2. Can one person carry it easily?
 3. Does it weigh under 25kg?
+4. Is it SAFE to ship? (Not hazardous, chemical, food, liquid, perishable, or restricted)
+5. Is it USED ELECTRONICS? (We only buy used electronics - phones, laptops, tablets, cameras, watches, etc.)
 
-If NO to any question → {{"eligible": false}}
-If YES to all → {{"eligible": true}}
+If NO to ANY question → {{"eligible": false}}
+If YES to ALL → {{"eligible": true}}
 
 Is it a living thing, vehicle, furniture, large appliance, or fictional item? → {{"is_silly": true}}
 
+IMPORTANT: Generate a witty, friendly rejection message for non-eligible items. Be creative and humorous while staying professional.
+
 Output ONLY JSON:
-{{"eligible": true/false, "is_silly": true/false, "category_matched": "type", "reason": "message"}}
+{{"eligible": true/false, "is_silly": true/false, "category_matched": "type", "reason": "witty message explaining why we can't accept this item"}}
 
 Example thinking:
-- Small electronics → fits in bag → eligible
-- Large instruments → won't fit in bag → not eligible
-- Animals/vehicles → absurd → not eligible, is_silly
-- Furniture → won't fit in bag → not eligible
+- iPhone, MacBook, iPad, Samsung phone → used electronics → fits in bag → eligible
+- Piano, couch, fridge → too large → not eligible, witty message
+- Drain cleaner, chemicals, food → not electronics OR hazardous → not eligible
+- Animals, vehicles → absurd → not eligible, is_silly, humorous message
+- Clothing, books, toys → not electronics → not eligible
 
 Analyze "{full_text}":"""
 
