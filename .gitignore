@@ -1,5 +1,7 @@
 # Environment variables
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -46,3 +48,4 @@ Thumbs.db
 *.png
 chromedriver
 geckodriver
+.vercel
