@@ -513,7 +513,7 @@ CONVERSATION HISTORY (check for duplicate questions):
         # If no messages yet, return the initial question directly
         if not messages:
             return {
-                "question": "What item do you want to sell? (e.g., iPhone 11, MacBook Pro, Samsung TV, Piano)",
+                "question": "What item do you want to sell?",
                 "field_name": "item_description",
                 "type": "text",
                 "completed": False
