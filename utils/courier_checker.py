@@ -45,25 +45,28 @@ def is_courier_eligible(product_info: dict) -> dict:
 
         client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
 
-        prompt = f"""Is "{full_text}" small enough to fit in a courier bag/box?
+        prompt = f"""Can "{full_text}" be shipped in a courier bag or small parcel box?
 
-RULE: Only items that fit in a bag and weigh under 25kg can be couriered.
+ASK YOURSELF:
+1. Can this item fit in a standard courier bag or small box?
+2. Can one person carry it easily?
+3. Does it weigh under 25kg?
 
-YES (eligible: true):
-- Phone, laptop, tablet, camera, watch, headphones, drone, gaming console
+If NO to any question → {{"eligible": false}}
+If YES to all → {{"eligible": true}}
 
-NO (eligible: false):
-- Piano, guitar, fridge, couch, car, elephant, jetski, penguin, washing machine
+Is it a living thing, vehicle, furniture, large appliance, or fictional item? → {{"is_silly": true}}
 
-Output JSON ONLY:
-{{"eligible": false, "is_silly": false, "category_matched": "descriptor", "reason": "Brief message"}}
+Output ONLY JSON:
+{{"eligible": true/false, "is_silly": true/false, "category_matched": "type", "reason": "message"}}
 
-Examples:
-piano → {{"eligible": false, "is_silly": false, "category_matched": "instrument", "reason": "Pianos are too large for courier. We only accept small electronics."}}
-phone → {{"eligible": true, "is_silly": false, "category_matched": "phone", "reason": "Item can be couriered"}}
-elephant → {{"eligible": false, "is_silly": true, "category_matched": "animal", "reason": "We can't courier elephants! We buy small electronics."}}
+Example thinking:
+- Small electronics → fits in bag → eligible
+- Large instruments → won't fit in bag → not eligible
+- Animals/vehicles → absurd → not eligible, is_silly
+- Furniture → won't fit in bag → not eligible
 
-Now analyze "{full_text}":"""
+Analyze "{full_text}":"""
 
         print(f"   Calling Claude API...")
         response = client.messages.create(
