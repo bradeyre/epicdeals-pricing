@@ -34,6 +34,7 @@ def start_conversation():
     session['conversation_id'] = session_id
     session['conversation_history'] = []
     session['product_info'] = {}
+    session['courier_checked'] = False  # Reset courier check flag
 
     # Get initial question from AI
     next_question = ai_service.get_next_question([], {})
