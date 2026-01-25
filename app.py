@@ -74,8 +74,8 @@ def submit_answer():
     # This catches obvious non-courier items immediately
     if not session.get('courier_checked'):
         quick_check = is_courier_eligible({'category': user_answer.lower(), 'brand': '', 'model': user_answer.lower()})
+        session['courier_checked'] = True  # Mark as checked regardless of result
         if not quick_check['eligible']:
-            session['courier_checked'] = True
             return jsonify({
                 'success': True,
                 'completed': False,
