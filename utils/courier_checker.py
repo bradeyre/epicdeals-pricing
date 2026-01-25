@@ -22,8 +22,14 @@ def is_courier_eligible(product_info: dict) -> dict:
     brand = product_info.get('brand', '').lower()
     model = product_info.get('model', '').lower()
 
-    # Combine all text for AI analysis
-    full_text = f"{category} {brand} {model}".strip()
+    # Combine all text for AI analysis, removing empty/duplicate parts
+    parts = [p for p in [category, brand, model] if p]
+    full_text = " ".join(parts).strip()
+
+    # Remove duplicates (e.g., "piano piano" becomes "piano")
+    words = full_text.split()
+    if len(words) > 1 and all(w == words[0] for w in words):
+        full_text = words[0]
 
     if not full_text:
         return {
@@ -39,86 +45,36 @@ def is_courier_eligible(product_info: dict) -> dict:
 
         client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
 
-        prompt = f"""You are analyzing whether an item can be couriered for EpicDeals.co.za, a second-hand electronics buyer in South Africa.
+        prompt = f"""Analyze if this item can be couriered: "{full_text}"
 
-ITEM DESCRIPTION: "{full_text}"
+SIMPLE RULE:
+Can it fit in a courier bag or small box (roughly 60cm x 40cm x 40cm) and weigh under 25kg?
+- If YES → {{"eligible": true}}
+- If NO → {{"eligible": false}}
 
-THE CORE RULE - USE YOUR INTELLIGENCE:
-Ask yourself: "Can this item fit in a courier bag or small parcel box, and be safely shipped by a standard courier service?"
+THINK STEP BY STEP:
+1. What is this item?
+2. How big is it physically?
+3. Can one person easily carry it in a box?
+4. Would a courier accept it?
 
-If YES → eligible: true
-If NO → eligible: false
+If the answer to #3 or #4 is NO, then eligible: false.
 
-THINK ABOUT:
-1. SIZE: Can it fit in a courier bag or box that one person can carry? (Roughly: smaller than 60cm x 40cm x 40cm)
-2. WEIGHT: Can one person lift it? (Under ~25kg)
-3. FRAGILITY: Is it robust enough to survive standard courier handling in a box?
-4. PRACTICALITY: Would a normal courier service accept this item?
+Common sense examples:
+- Piano/keyboard/guitar → TOO LARGE → false
+- Fridge/washer/couch → TOO LARGE → false
+- Car/bike/elephant → ABSURD → false (is_silly: true)
+- Phone/laptop/tablet/headphones → SMALL → true
+- Camera/watch/drone → SMALL → true
 
-EXAMPLES OF YOUR THINKING PROCESS:
+Output ONLY valid JSON:
+{{"eligible": true/false, "is_silly": true/false, "category_matched": "descriptor", "reason": "message"}}
 
-"Piano" → Think: Pianos are large, heavy instruments. Even small keyboards are bulky. Cannot fit in courier bag. NOT ELIGIBLE.
+Examples:
+{{"eligible": false, "is_silly": false, "category_matched": "instrument", "reason": "🎹 Pianos are too large for courier! We only accept items that fit in a small box like phones, laptops, and tablets."}}
+{{"eligible": true, "is_silly": false, "category_matched": "phone", "reason": "Item can be couriered"}}
 
-"Refrigerator" → Think: Large appliance, very heavy, requires special delivery. NOT ELIGIBLE.
-
-"BMW" → Think: A car cannot be couriered. Absurd. NOT ELIGIBLE.
-
-"Elephant" → Think: Living creature, massive, absurd to courier. SILLY and NOT ELIGIBLE.
-
-"iPhone 11" → Think: Small phone, fits in hand, lightweight, can be safely packed in small box. ELIGIBLE.
-
-"Laptop" → Think: Portable computer, designed to be carried, fits in courier box. ELIGIBLE.
-
-"Couch" → Think: Large furniture, heavy, requires furniture movers. NOT ELIGIBLE.
-
-"Guitar" → Think: Musical instrument, bulky, delicate neck, too large for standard courier box. NOT ELIGIBLE.
-
-"Headphones" → Think: Small, lightweight, fits in bag. ELIGIBLE.
-
-SILLY/IMPOSSIBLE ITEMS (use common sense):
-- Living creatures (animals, people, plants)
-- Fictional things (unicorns, dragons, lightsabers, magic wands)
-- Illegal items (drugs, weapons, organs)
-- Absurd things (buildings, vehicles, aircraft, boats, rockets)
-
-RESPONSE TONE:
-- For SILLY items: Be witty and playful, redirect to real electronics
-- For LARGE items: Be friendly and apologetic, explain we only accept courier-friendly items
-- For INAPPROPRIATE items: Be firm but brief
-- Use emojis, keep responses 2-3 sentences max
-
-OUTPUT FORMAT (respond with ONLY valid JSON):
-{{
-    "eligible": true/false,
-    "is_silly": true/false,
-    "category_matched": "brief descriptor",
-    "reason": "Your message"
-}}
-
-EXAMPLES:
-
-Input: "piano"
-Output: {{"eligible": false, "is_silly": false, "category_matched": "large instrument", "reason": "🎹 Pianos are too large for courier delivery! We only accept items that fit in a courier bag or small box. We buy phones, laptops, tablets, cameras, and other small electronics. Please check back as we expand!"}}
-
-Input: "washing machine"
-Output: {{"eligible": false, "is_silly": false, "category_matched": "large appliance", "reason": "We only accept items that can be couriered in a bag or small box. Large appliances like washing machines require special delivery. We buy phones, laptops, cameras, and other small electronics!"}}
-
-Input: "elephant"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "animal", "reason": "🐘 We definitely can't courier elephants! We buy small electronics like phones, laptops, and tablets. Got any of those instead?"}}
-
-Input: "BMW"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "vehicle", "reason": "🚗 Cars can't be couriered! We buy small electronics like phones, laptops, cameras, and gaming consoles that fit in a box. Got something like that?"}}
-
-Input: "iPhone 11"
-Output: {{"eligible": true, "is_silly": false, "category_matched": "phone", "reason": "Item can be couriered"}}
-
-Input: "MacBook Pro"
-Output: {{"eligible": true, "is_silly": false, "category_matched": "laptop", "reason": "Item can be couriered"}}
-
-Input: "unicorn"
-Output: {{"eligible": false, "is_silly": true, "category_matched": "mythical creature", "reason": "🦄 Unfortunately, mythical creatures aren't real! We buy actual electronics like phones, laptops, and tablets. Got any of those?"}}
-
-Now analyze this item and respond with ONLY valid JSON:"""
+Analyze now:"""
 
         print(f"   Calling Claude API...")
         response = client.messages.create(
