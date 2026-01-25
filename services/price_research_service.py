@@ -1,6 +1,6 @@
 from scrapers.epicdeals_scraper import EpicDealsScraper
 from scrapers.competitor_scraper import CompetitorScraper
-from scrapers.facebook_scraper import FacebookMarketplaceScraper
+# from scrapers.facebook_scraper import FacebookMarketplaceScraper  # Disabled for production (requires Chrome)
 from scrapers.ebay_scraper import EbayScraper
 from scrapers.gumtree_scraper import GumtreeScraper
 from utils.currency_converter import CurrencyConverter
@@ -17,7 +17,7 @@ class PriceResearchService:
     def __init__(self):
         self.epicdeals_scraper = EpicDealsScraper()
         self.competitor_scraper = CompetitorScraper()
-        self.facebook_scraper = FacebookMarketplaceScraper()
+        # self.facebook_scraper = FacebookMarketplaceScraper()  # Disabled for production
         self.ebay_scraper = EbayScraper()
         self.gumtree_scraper = GumtreeScraper()
         self.currency_converter = CurrencyConverter()
@@ -101,7 +101,8 @@ class PriceResearchService:
                 if source_name == 'EpicDeals':
                     results = self.epicdeals_scraper.search_product(search_queries)
                 elif source_name == 'Facebook Marketplace':
-                    results = self.facebook_scraper.search_product(search_queries)
+                    # Disabled for production (requires Chrome/Selenium)
+                    results = []
                 elif source_name == 'Gumtree':
                     results = self.gumtree_scraper.search_product(search_queries)
                 elif source_name in ['BobShop', 'Takealot', 'BidOrBuy', 'WeFix', 'Swopp', 'iStore']:
