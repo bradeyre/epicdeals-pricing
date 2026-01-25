@@ -393,6 +393,11 @@ COMPLETION EXAMPLE - After user answers last question (unlock/contract), return 
     "completed": true
 }
 
+CRITICAL JSON FORMAT RULES:
+- Use lowercase "true" and "false" (NOT "True" or "False")
+- Use double quotes for strings (NOT single quotes)
+- Do NOT include any text before or after the JSON
+
 DO NOT ask any more questions after all requirements met. Just return completed: true with empty question.
 
 DECLINE IMMEDIATELY if:
