@@ -598,6 +598,12 @@ Return a JSON object with these fields (use null if not mentioned):
                 "content": msg["content"]
             })
 
+        # Debug: Print what we're sending to extraction AI
+        print(f"\n🔍 EXTRACTION DEBUG:")
+        print(f"   Conversation history has {len(conversation_history)} messages")
+        for i, msg in enumerate(conversation_history):
+            print(f"   [{i}] {msg['role']}: {msg['content'][:100]}")
+
         response = self.client.messages.create(
             model=self.model,
             max_tokens=2048,
@@ -606,10 +612,16 @@ Return a JSON object with these fields (use null if not mentioned):
         )
 
         import json
+        raw_response = response.content[0].text
+        print(f"   AI extraction raw response: {raw_response[:500]}")
+
         try:
-            result = json.loads(response.content[0].text)
+            result = json.loads(raw_response)
+            print(f"   ✅ Extraction successful: {result}")
             return result
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"   ❌ JSON parse failed: {e}")
+            print(f"   Full response: {raw_response}")
             return None
 
     def generate_search_queries(self, product_info):
