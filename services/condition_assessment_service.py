@@ -12,18 +12,29 @@ class ConditionAssessmentService:
     """
 
     # Condition multipliers (applied to base market value)
+    # Updated to match new 5-tier grading system with clearer distinctions
     CONDITION_MULTIPLIERS = {
-        'excellent': 0.98,
-        'pristine': 0.98,
-        'like new': 0.98,
-        'good': 0.90,
-        'minor wear': 0.90,
-        'fair': 0.75,
-        'visible scratches': 0.75,
-        'poor': 0.60,
-        'damaged': 0.60,
-        'broken': 0.35,
-        'not working': 0.35
+        # New structured grading (exact matches from AI)
+        'pristine': 0.975,  # 95-100% value - Like new, no visible wear
+        'excellent': 0.90,  # 85-95% value - Very light use, barely noticeable marks
+        'good': 0.775,      # 70-85% value - Normal use, minor scratches/scuffs
+        'fair': 0.60,       # 50-70% value - Heavy use, obvious scratches/dents
+        'poor': 0.40,       # 30-50% value - Significant damage or broken parts
+
+        # Legacy support (partial matching)
+        'like new': 0.975,
+        'very light use': 0.90,
+        'barely noticeable marks': 0.90,
+        'normal use': 0.775,
+        'minor wear': 0.775,
+        'minor scratches': 0.775,
+        'heavy use': 0.60,
+        'visible scratches': 0.60,
+        'obvious scratches': 0.60,
+        'damaged': 0.40,
+        'broken': 0.40,
+        'significant damage': 0.40,
+        'not working': 0.30
     }
 
     # Issue deductions for PHONES/TABLETS (in ZAR)

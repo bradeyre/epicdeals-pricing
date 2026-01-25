@@ -110,10 +110,16 @@ class OfferService:
 
         # Step 3: Apply condition multiplier
         print("Applying condition multiplier...")
+        # Parse condition from new format: "Pristine - Like new, no visible wear (95-100% value)"
+        # Extract just the first word (pristine, excellent, good, fair, poor)
+        condition_key = (condition.lower().split('-')[0].split('(')[0].strip() if condition else 'good')
+
         condition_multiplier = self.condition_service.CONDITION_MULTIPLIERS.get(
-            condition.lower() if condition else 'good',
-            0.85
+            condition_key,
+            0.775  # Default to "good" multiplier
         )
+
+        print(f"Condition: {condition} → Key: {condition_key} → Multiplier: {condition_multiplier}")
 
         # Calculate adjusted value
         # Formula: (Market Value × Condition Multiplier) - Repair Costs
