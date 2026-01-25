@@ -415,9 +415,10 @@ Options: ["Doesn't work properly", "Leaks or drips", "Makes excessive noise", "M
 DEVICE UNLOCK VERIFICATION (CRITICAL - PHONES/TABLETS/LAPTOPS/WATCHES ONLY):
 
 After getting damage_details, check if device is lockable:
-- Lockable categories: phone, smartphone, mobile, iphone, android, tablet, ipad, laptop, notebook, macbook, computer, watch, smartwatch
+- Lockable categories ONLY: phone, smartphone, mobile, iphone, android, tablet, ipad, laptop, notebook, macbook, computer, watch, smartwatch
+- NOT lockable (DO NOT ask unlock questions): camera, binoculars, console, TV, appliance, headphones, speakers, etc.
 
-If lockable, ask THREE verification questions:
+If lockable (and ONLY if in the lockable list above), ask THREE verification questions:
 
 Question 1 - Account Lock Status:
 {
@@ -489,8 +490,8 @@ COMPLETION: Set "completed": true when you have:
 3. Key specs (if applicable)
 4. Overall condition
 5. Damage details (specific issues)
-6. Device unlock verification (if lockable device - phones/tablets/laptops/watches)
-7. Contract status (if lockable device)
+6. Device unlock verification (ONLY if category is phone/smartphone/tablet/laptop/watch - NOT for cameras/binoculars/consoles/etc.)
+7. Contract status (ONLY if category is phone/smartphone/tablet/laptop/watch)
 
 DECLINE IMMEDIATELY if:
 - Device is locked to an account → decline_reason: "device_locked"
