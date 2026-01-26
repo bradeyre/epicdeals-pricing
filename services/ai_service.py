@@ -11,57 +11,90 @@ class AIService:
     def __init__(self):
         self.client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
         self.model = Config.ANTHROPIC_MODEL
+        self._required_fields_cache = {}  # Cache AI-determined requirements per product
 
     def _get_required_fields(self, product_info):
         """
-        Determines which fields are required based on product category.
+        Uses AI to intelligently determine which fields are required for this specific product.
+        NO HARD-CODED LISTS - uses universal logic that works for ANY product.
 
         Returns:
             dict: Required fields and their descriptions for error messages
         """
-        category = product_info.get('category', '').lower()
+        brand = product_info.get('brand', 'Unknown')
+        model = product_info.get('model', 'Unknown')
+        category = product_info.get('category', 'item')
 
         # Base requirements for all items
         required = {
             'category': 'product category',
             'brand': 'brand name',
-            'model': 'model name'
+            'model': 'model name',
+            'damage_details': 'damage assessment'  # ALWAYS required for condition/pricing
         }
 
-        # Category-specific requirements
-        if category in ['phone', 'smartphone', 'mobile', 'iphone', 'android']:
-            required.update({
-                'capacity': 'storage capacity',
-                'damage_details': 'damage assessment',
-                'device_unlocked': 'device unlock status',
-                'contract_free': 'contract status'
-            })
-        elif category in ['laptop', 'notebook', 'macbook', 'computer']:
-            required.update({
-                'specifications': 'specifications (RAM, storage)',
-                'damage_details': 'damage assessment',
-                'device_unlocked': 'device unlock status'
-            })
-        elif category in ['tablet', 'ipad']:
-            required.update({
-                'capacity': 'storage capacity',
-                'damage_details': 'damage assessment',
-                'device_unlocked': 'device unlock status',
-                'contract_free': 'contract status'
-            })
-        elif category in ['watch', 'smartwatch']:
-            required.update({
-                'damage_details': 'damage assessment'
-            })
-            # Smart watches might be lockable - check if it's a smart device
-            model_lower = product_info.get('model', '').lower()
-            if 'apple watch' in model_lower or 'galaxy watch' in model_lower:
+        # Check cache first to avoid redundant AI calls
+        cache_key = f"{brand}_{model}_{category}"
+        if cache_key in self._required_fields_cache:
+            print(f"   ✅ Using cached requirements for {brand} {model}")
+            return self._required_fields_cache[cache_key]
+
+        # Use AI to determine additional requirements
+        prompt = f"""Analyze this product and determine what additional fields are REQUIRED for pricing:
+
+Product: {brand} {model}
+Category: {category}
+
+Answer these questions with YES or NO:
+
+1. Does this product have storage capacity that affects value? (phones, laptops, tablets, cameras with SD cards)
+2. Does this product have specs that affect value? (RAM, processor, screen size for laptops/computers)
+3. Can this device be locked to digital accounts? (iCloud, Google, Samsung, Microsoft accounts)
+4. Can this device have cellular contracts or payment plans? (phones, tablets with cellular, smartwatches with cellular)
+
+Return ONLY a JSON object:
+{{
+    "needs_storage": true/false,
+    "needs_specs": true/false,
+    "needs_unlock_verification": true/false,
+    "needs_contract_verification": true/false,
+    "reasoning": "Brief explanation"
+}}"""
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            import json
+            requirements = json.loads(response.content[0].text)
+
+            print(f"\n🔍 INTELLIGENT FIELD DETECTION for {brand} {model}:")
+            print(f"   Storage needed: {requirements.get('needs_storage', False)}")
+            print(f"   Specs needed: {requirements.get('needs_specs', False)}")
+            print(f"   Unlock verification: {requirements.get('needs_unlock_verification', False)}")
+            print(f"   Contract verification: {requirements.get('needs_contract_verification', False)}")
+            print(f"   Reasoning: {requirements.get('reasoning', 'N/A')}\n")
+
+            # Add required fields based on AI analysis
+            if requirements.get('needs_storage'):
+                required['capacity'] = 'storage capacity'
+            if requirements.get('needs_specs'):
+                required['specifications'] = 'specifications'
+            if requirements.get('needs_unlock_verification'):
                 required['device_unlocked'] = 'device unlock status'
-        else:
-            # Other items (cameras, appliances, etc.)
-            required.update({
-                'damage_details': 'damage assessment'
-            })
+            if requirements.get('needs_contract_verification'):
+                required['contract_free'] = 'contract status'
+
+            # Cache the result for future validations
+            self._required_fields_cache[cache_key] = required
+
+        except Exception as e:
+            print(f"⚠️  AI field detection failed: {e}")
+            print(f"   Falling back to safe defaults (damage only)")
+            # Fallback: Only require damage assessment if AI call fails
 
         return required
 
