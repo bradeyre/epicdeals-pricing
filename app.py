@@ -1,22 +1,67 @@
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 from config import Config
-from services.ai_service import AIService
-from services.offer_service import OfferService
-from services.email_service import EmailService
-from utils.validators import Validators
-from utils.courier_checker import is_courier_eligible, get_courier_rejection_message
 import os
 import secrets
+import sys
+import traceback
+
+print("=" * 60)
+print("STARTING APPLICATION")
+print("=" * 60)
 
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
 CORS(app)  # Enable CORS for WordPress embedding
 
-# Initialize services
-ai_service = AIService()
-offer_service = OfferService()
-email_service = EmailService()
+# Initialize services with error handling
+ai_service = None
+offer_service = None
+email_service = None
+
+try:
+    print("Importing AIService...")
+    from services.ai_service import AIService
+    print("✅ AIService imported")
+
+    print("Initializing AIService...")
+    ai_service = AIService()
+    print("✅ AIService initialized")
+
+    print("Importing OfferService...")
+    from services.offer_service import OfferService
+    print("✅ OfferService imported")
+
+    print("Initializing OfferService...")
+    offer_service = OfferService()
+    print("✅ OfferService initialized")
+
+    print("Importing EmailService...")
+    from services.email_service import EmailService
+    print("✅ EmailService imported")
+
+    print("Initializing EmailService...")
+    email_service = EmailService()
+    print("✅ EmailService initialized")
+
+    print("Importing utils...")
+    from utils.validators import Validators
+    from utils.courier_checker import is_courier_eligible, get_courier_rejection_message
+    print("✅ Utils imported")
+
+    print("\n" + "=" * 60)
+    print("ALL SERVICES INITIALIZED SUCCESSFULLY")
+    print("=" * 60 + "\n")
+
+except Exception as e:
+    print(f"\n{'='*60}")
+    print(f"❌ INITIALIZATION ERROR:")
+    print(f"{'='*60}")
+    print(f"Error: {e}")
+    print(f"\nFull traceback:")
+    traceback.print_exc()
+    print(f"{'='*60}\n")
+    sys.exit(1)
 
 
 @app.route('/')
@@ -28,22 +73,35 @@ def index():
 @app.route('/api/start-conversation', methods=['POST'])
 def start_conversation():
     """Initialize a new conversation"""
+    try:
+        if ai_service is None:
+            return jsonify({
+                'success': False,
+                'error': 'AI service not initialized. Please contact support.'
+            }), 500
 
-    # Create new session
-    session_id = secrets.token_urlsafe(16)
-    session['conversation_id'] = session_id
-    session['conversation_history'] = []
-    session['product_info'] = {}
-    session['courier_checked'] = False  # Reset courier check flag
+        # Create new session
+        session_id = secrets.token_urlsafe(16)
+        session['conversation_id'] = session_id
+        session['conversation_history'] = []
+        session['product_info'] = {}
+        session['courier_checked'] = False  # Reset courier check flag
 
-    # Get initial question from AI
-    next_question = ai_service.get_next_question([], {})
+        # Get initial question from AI
+        next_question = ai_service.get_next_question([], {})
 
-    return jsonify({
-        'success': True,
-        'session_id': session_id,
-        'question': next_question
-    })
+        return jsonify({
+            'success': True,
+            'session_id': session_id,
+            'question': next_question
+        })
+    except Exception as e:
+        print(f"❌ Error in start_conversation: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Error starting conversation: {str(e)}'
+        }), 500
 
 
 @app.route('/api/submit-answer', methods=['POST'])
