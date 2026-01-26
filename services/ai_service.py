@@ -12,6 +12,166 @@ class AIService:
         self.client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
         self.model = Config.ANTHROPIC_MODEL
 
+    def _get_required_fields(self, product_info):
+        """
+        Determines which fields are required based on product category.
+
+        Returns:
+            dict: Required fields and their descriptions for error messages
+        """
+        category = product_info.get('category', '').lower()
+
+        # Base requirements for all items
+        required = {
+            'category': 'product category',
+            'brand': 'brand name',
+            'model': 'model name'
+        }
+
+        # Category-specific requirements
+        if category in ['phone', 'smartphone', 'mobile', 'iphone', 'android']:
+            required.update({
+                'capacity': 'storage capacity',
+                'damage_details': 'damage assessment',
+                'device_unlocked': 'device unlock status',
+                'contract_free': 'contract status'
+            })
+        elif category in ['laptop', 'notebook', 'macbook', 'computer']:
+            required.update({
+                'specifications': 'specifications (RAM, storage)',
+                'damage_details': 'damage assessment',
+                'device_unlocked': 'device unlock status'
+            })
+        elif category in ['tablet', 'ipad']:
+            required.update({
+                'capacity': 'storage capacity',
+                'damage_details': 'damage assessment',
+                'device_unlocked': 'device unlock status',
+                'contract_free': 'contract status'
+            })
+        elif category in ['watch', 'smartwatch']:
+            required.update({
+                'damage_details': 'damage assessment'
+            })
+            # Smart watches might be lockable - check if it's a smart device
+            model_lower = product_info.get('model', '').lower()
+            if 'apple watch' in model_lower or 'galaxy watch' in model_lower:
+                required['device_unlocked'] = 'device unlock status'
+        else:
+            # Other items (cameras, appliances, etc.)
+            required.update({
+                'damage_details': 'damage assessment'
+            })
+
+        return required
+
+    def _validate_completion(self, product_info, result):
+        """
+        Validates that all required fields are present before allowing completion.
+
+        Args:
+            product_info: Current product information
+            result: AI's response with completed flag
+
+        Returns:
+            dict: Modified result that forces next question if validation fails
+        """
+        # Only validate if AI is trying to complete
+        if not result.get('completed', False):
+            return result
+
+        # Check if we have all required fields
+        required_fields = self._get_required_fields(product_info)
+        missing_fields = []
+
+        for field, description in required_fields.items():
+            if field not in product_info or not product_info[field]:
+                missing_fields.append(description)
+
+        # If fields are missing, override completion and force next question
+        if missing_fields:
+            print(f"\n⚠️  VALIDATION FAILED - Missing required fields:")
+            for field in missing_fields:
+                print(f"   - {field}")
+            print(f"   Current product_info: {product_info}")
+            print(f"   Blocking completion and forcing next question\n")
+
+            # Override AI's completion attempt
+            result['completed'] = False
+
+            # Generate appropriate next question based on first missing field
+            next_question = self._generate_missing_field_question(product_info, missing_fields[0])
+            result.update(next_question)
+
+        return result
+
+    def _generate_missing_field_question(self, product_info, missing_description):
+        """
+        Generates the next required question based on missing field.
+
+        Args:
+            product_info: Current product information
+            missing_description: Description of missing field
+
+        Returns:
+            dict: Question to ask for the missing field
+        """
+        category = product_info.get('category', '').lower()
+        brand = product_info.get('brand', 'item')
+        model = product_info.get('model', 'device')
+        product_name = f"{brand} {model}"
+
+        if 'storage capacity' in missing_description:
+            return {
+                'question': f"What storage capacity does your {product_name} have?",
+                'field_name': 'capacity',
+                'type': 'text'
+            }
+        elif 'damage assessment' in missing_description:
+            return {
+                'question': f"Are there any of these issues with your {product_name}? Select all that apply:",
+                'field_name': 'damage_details',
+                'type': 'multi_select',
+                'options': ['Screen cracked', 'Back glass cracked', 'Water damage', 'Face ID / Touch ID not working',
+                           'Camera not working', "Won't turn on / Dead", 'Battery health below 80%',
+                           'Buttons or ports damaged', 'Camera issues (blurry)', 'Screen scratches (not cracked)',
+                           'Body scratches or scuffs', 'Minor dents', 'None - Everything works perfectly']
+            }
+        elif 'device unlock status' in missing_description:
+            if 'iphone' in model.lower() or 'ipad' in model.lower() or 'macbook' in model.lower():
+                account_type = 'iCloud'
+            elif 'samsung' in brand.lower():
+                account_type = 'Google and Samsung accounts'
+            else:
+                account_type = 'any accounts'
+
+            return {
+                'question': f"Is your {product_name} unlocked from {account_type}?",
+                'field_name': 'device_unlocked',
+                'type': 'multiple_choice',
+                'options': [f'Yes - Fully unlocked', f'No - Still locked', 'Not sure']
+            }
+        elif 'contract status' in missing_description:
+            return {
+                'question': f"Is your {product_name} free from any contract or payment plan?",
+                'field_name': 'contract_free',
+                'type': 'multiple_choice',
+                'options': ['Yes - Fully paid off, no contracts', 'No - Still under contract or payment plan']
+            }
+        elif 'specifications' in missing_description:
+            return {
+                'question': f"What are the specifications of your {product_name}? (RAM, storage, screen size)",
+                'field_name': 'specifications',
+                'type': 'text'
+            }
+        else:
+            # Fallback
+            return {
+                'question': f"Please provide additional details about your {product_name}",
+                'field_name': 'additional_info',
+                'type': 'text'
+            }
+
     def get_next_question(self, conversation_history, product_info):
         """
         Determines the next question to ask based on conversation history
@@ -550,6 +710,9 @@ CONVERSATION HISTORY (check for duplicate questions):
             # Ensure completed field exists
             if 'completed' not in result:
                 result['completed'] = False
+
+            # CRITICAL: Validate completion - enforce required fields
+            result = self._validate_completion(product_info, result)
 
             return result
         except json.JSONDecodeError as e:
