@@ -337,9 +337,9 @@ Think intelligently - don't use category alone:
 - "iPhone 16" → YES, lockable (has iCloud lock)
 - "Canon EOS camera" → NO, not lockable (no account system)
 
-If the device CAN be locked to accounts (based on intelligence, not lists), ask THREE verification questions:
+If the device CAN be locked to accounts (based on intelligence, not lists), ask MULTIPLE verification questions in order:
 
-Question 1 - Account Lock Status:
+Question 1 - Account Lock Status (REQUIRED):
 Use INTELLIGENCE to mention only RELEVANT accounts for this specific device:
 - iPhone/iPad/MacBook/Apple Watch → mention only "iCloud"
 - Samsung phone/tablet/watch → mention only "Google Account and Samsung Account"
@@ -381,7 +381,10 @@ If answer is "No" or "Not sure" → STOP and return:
     "decline_reason": "device_locked"
 }
 
-Question 2 - Contract Status:
+If answer is "Yes - Fully unlocked" → Continue to Question 2!
+
+Question 2 - Contract Status (REQUIRED for phones/tablets):
+CRITICAL: You MUST ask this question for smartphones and tablets - do NOT skip it!
 {
     "question": "Is your [Product] free from any contract or payment plan?",
     "field_name": "contract_free",
@@ -402,19 +405,13 @@ If answer is "No" → STOP and return:
     "decline_reason": "under_contract"
 }
 
-Question 3 - Proof of Purchase (Optional):
-{
-    "question": "Do you have proof of purchase for your [Product]? (This is optional but increases buyer confidence)",
-    "field_name": "has_proof_of_purchase",
-    "type": "multiple_choice",
-    "options": [
-        "Yes - I have the original receipt/invoice",
-        "No - I don't have proof of purchase"
-    ],
-    "completed": false
-}
+If answer is "Yes - Fully paid off" → NOW you can mark as completed!
 
-After these questions, extract: device_unlocked=yes, contract_free=yes, has_proof_of_purchase=yes/no
+Question 3 - Proof of Purchase (OPTIONAL - SKIP THIS):
+DO NOT ask about proof of purchase. Skip this question entirely.
+After Questions 1 and 2 are answered, proceed directly to completion.
+
+After unlock and contract questions answered, extract: device_unlocked=yes, contract_free=yes
 Then set completed: true
 
 IMPORTANT PENALTY POLICY:
@@ -433,13 +430,18 @@ COMPLETION: Set "completed": true ONLY when you have ASKED ABOUT AND RECEIVED AN
 
 DO NOT set completed=true until you have asked ALL applicable questions and received user answers!
 
-For an iPhone, you MUST ask:
-- Storage capacity (e.g., "128GB")
-- Damage details ("Are there any of these issues...")
-- Device unlock ("Is your iPhone unlocked from iCloud?")
-- Contract status ("Is your iPhone free from any contract...")
+For an iPhone, you MUST ask ALL of these questions in order:
+1. Storage capacity (e.g., "128GB") ✓
+2. Damage details ("Are there any of these issues...") ✓
+3. Device unlock ("Is your iPhone unlocked from iCloud?") ✓
+4. Contract status ("Is your iPhone free from any contract...") ✓
+5. ONLY THEN mark completed=true
+
+CRITICAL: After the user answers the unlock question, you MUST ask the contract question next!
+Do NOT jump to completion after unlock - contract question is MANDATORY for phones!
 
 NEVER skip to completion after just asking about storage!
+NEVER skip to completion after just asking about unlock - ask contract first!
 
 COMPLETION EXAMPLES - After user answers last question (unlock/contract), return EXACTLY this format:
 
