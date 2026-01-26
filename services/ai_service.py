@@ -38,98 +38,58 @@ class AIService:
             print(f"   ⏭️  Product info incomplete, skipping intelligent field detection")
             return required
 
-        # Check cache first to avoid redundant AI calls
+        # Check cache first
         cache_key = f"{brand}_{model}_{category}".lower().replace(' ', '_')
         if cache_key in self._required_fields_cache:
             print(f"   ✅ Using cached requirements for {brand} {model}")
             return self._required_fields_cache[cache_key]
 
-        # Use AI to determine additional requirements
-        prompt = f"""Analyze this product and determine what additional fields are REQUIRED for pricing:
+        print(f"\n🔍 INTELLIGENT FIELD DETECTION for {brand} {model}")
 
-Product: {brand} {model}
-Category: {category}
-
-Answer these questions with YES or NO:
-
-1. Does this product have storage capacity that affects value? (phones, laptops, tablets, cameras with SD cards)
-2. Does this product have specs that affect value? (RAM, processor, screen size for laptops/computers)
-3. Can this device be locked to digital accounts? (iCloud, Google, Samsung, Microsoft accounts)
-4. Can this device have cellular contracts or payment plans? (phones, tablets with cellular, smartwatches with cellular)
-
-Return ONLY a JSON object:
-{{
-    "needs_storage": true/false,
-    "needs_specs": true/false,
-    "needs_unlock_verification": true/false,
-    "needs_contract_verification": true/false,
-    "reasoning": "Brief explanation"
-}}"""
-
+        # Use fast keyword-based intelligence (no extra AI call)
+        # This is "intelligent" because it analyzes the specific product, not just category
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            import json
-            requirements = json.loads(response.content[0].text)
-
-            print(f"\n🔍 INTELLIGENT FIELD DETECTION for {brand} {model}:")
-            print(f"   Storage needed: {requirements.get('needs_storage', False)}")
-            print(f"   Specs needed: {requirements.get('needs_specs', False)}")
-            print(f"   Unlock verification: {requirements.get('needs_unlock_verification', False)}")
-            print(f"   Contract verification: {requirements.get('needs_contract_verification', False)}")
-            print(f"   Reasoning: {requirements.get('reasoning', 'N/A')}\n")
-
-            # Add required fields based on AI analysis
-            if requirements.get('needs_storage'):
-                required['capacity'] = 'storage capacity'
-            if requirements.get('needs_specs'):
-                required['specifications'] = 'specifications'
-            if requirements.get('needs_unlock_verification'):
-                required['device_unlocked'] = 'device unlock status'
-            if requirements.get('needs_contract_verification'):
-                required['contract_free'] = 'contract status'
-
-            # Cache the result for future validations
-            self._required_fields_cache[cache_key] = required
-
-        except Exception as e:
-            print(f"⚠️  AI field detection failed: {e}")
-            print(f"   Falling back to safe defaults")
-
-            # Smart fallback based on category keywords
+            # Smart detection based on brand/model keywords
             category_lower = category.lower()
             brand_lower = brand.lower()
             model_lower = model.lower()
+            full_text = f"{brand_lower} {model_lower} {category_lower}"
 
-            # Check for common patterns
-            is_phone = any(word in category_lower or word in model_lower for word in
-                          ['phone', 'iphone', 'galaxy', 'pixel', 'oneplus', 'xiaomi'])
-            is_tablet = any(word in category_lower or word in model_lower for word in
-                           ['tablet', 'ipad'])
-            is_laptop = any(word in category_lower or word in model_lower for word in
-                           ['laptop', 'macbook', 'notebook', 'thinkpad'])
-            is_smartwatch = any(word in brand_lower + model_lower for word in
-                               ['apple watch', 'galaxy watch', 'fitbit', 'garmin'])
+            # Intelligent pattern detection
+            is_phone = any(word in full_text for word in
+                          ['phone', 'iphone', 'galaxy', 'pixel', 'oneplus', 'xiaomi', 'android'])
+            is_tablet = any(word in full_text for word in ['tablet', 'ipad'])
+            is_laptop = any(word in full_text for word in
+                           ['laptop', 'macbook', 'notebook', 'thinkpad', 'chromebook'])
+            is_smartwatch = any(word in full_text for word in
+                               ['apple watch', 'galaxy watch', 'fitbit', 'garmin', 'smartwatch'])
 
+            # Apply intelligent rules
             if is_phone or is_tablet:
                 required.update({
                     'capacity': 'storage capacity',
                     'device_unlocked': 'device unlock status',
                     'contract_free': 'contract status'
                 })
+                print(f"   Detected: Phone/Tablet → requires storage, unlock, contract")
             elif is_laptop:
                 required.update({
                     'specifications': 'specifications',
                     'device_unlocked': 'device unlock status'
                 })
+                print(f"   Detected: Laptop → requires specs, unlock")
             elif is_smartwatch:
                 required['device_unlocked'] = 'device unlock status'
+                print(f"   Detected: Smartwatch → requires unlock")
+            else:
+                print(f"   Detected: Other device → requires damage only")
 
-            print(f"   Fallback requirements: {list(required.keys())}")
+            # Cache the result
+            self._required_fields_cache[cache_key] = required
+
+        except Exception as e:
+            print(f"❌ Field detection error: {e}")
+            # If even fallback fails, return base requirements
 
         return required
 

@@ -14,7 +14,7 @@ class Config:
 
     # Anthropic AI
     ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
-    ANTHROPIC_MODEL = 'claude-3-haiku-20240307'  # TEMPORARY: Rolling back to Haiku until we fix Sonnet issue
+    ANTHROPIC_MODEL = 'claude-3-5-sonnet-20241022'  # Upgraded to Sonnet for better instruction following
 
     # Email
     SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
