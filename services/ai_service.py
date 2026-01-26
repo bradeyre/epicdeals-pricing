@@ -789,8 +789,13 @@ Return a JSON object with these fields (use null if not mentioned):
         "battery": "good|degraded|dead",
         "functional": "fully_working|some_issues|not_working",
         "notes": "Any other damage mentioned"
-    }
+    },
+    "damage_details": "Summary of damage/issues mentioned",
+    "device_unlocked": "yes|no|not_asked (if device unlock was discussed)",
+    "contract_free": "yes|no|not_asked (if contract status was discussed)"
 }
+
+IMPORTANT: Extract device_unlocked and contract_free from conversation if those questions were asked.
 """
 
         messages = []
