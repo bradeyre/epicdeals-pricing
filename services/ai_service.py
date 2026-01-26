@@ -21,9 +21,9 @@ class AIService:
         Returns:
             dict: Required fields and their descriptions for error messages
         """
-        brand = product_info.get('brand', 'Unknown')
-        model = product_info.get('model', 'Unknown')
-        category = product_info.get('category', 'item')
+        brand = product_info.get('brand', '')
+        model = product_info.get('model', '')
+        category = product_info.get('category', '')
 
         # Base requirements for all items
         required = {
@@ -33,8 +33,13 @@ class AIService:
             'damage_details': 'damage assessment'  # ALWAYS required for condition/pricing
         }
 
+        # If we don't have basic product info yet, just return base requirements
+        if not brand or not model or brand == 'Unknown' or model == 'Unknown':
+            print(f"   ⏭️  Product info incomplete, skipping intelligent field detection")
+            return required
+
         # Check cache first to avoid redundant AI calls
-        cache_key = f"{brand}_{model}_{category}"
+        cache_key = f"{brand}_{model}_{category}".lower().replace(' ', '_')
         if cache_key in self._required_fields_cache:
             print(f"   ✅ Using cached requirements for {brand} {model}")
             return self._required_fields_cache[cache_key]
@@ -93,8 +98,38 @@ Return ONLY a JSON object:
 
         except Exception as e:
             print(f"⚠️  AI field detection failed: {e}")
-            print(f"   Falling back to safe defaults (damage only)")
-            # Fallback: Only require damage assessment if AI call fails
+            print(f"   Falling back to safe defaults")
+
+            # Smart fallback based on category keywords
+            category_lower = category.lower()
+            brand_lower = brand.lower()
+            model_lower = model.lower()
+
+            # Check for common patterns
+            is_phone = any(word in category_lower or word in model_lower for word in
+                          ['phone', 'iphone', 'galaxy', 'pixel', 'oneplus', 'xiaomi'])
+            is_tablet = any(word in category_lower or word in model_lower for word in
+                           ['tablet', 'ipad'])
+            is_laptop = any(word in category_lower or word in model_lower for word in
+                           ['laptop', 'macbook', 'notebook', 'thinkpad'])
+            is_smartwatch = any(word in brand_lower + model_lower for word in
+                               ['apple watch', 'galaxy watch', 'fitbit', 'garmin'])
+
+            if is_phone or is_tablet:
+                required.update({
+                    'capacity': 'storage capacity',
+                    'device_unlocked': 'device unlock status',
+                    'contract_free': 'contract status'
+                })
+            elif is_laptop:
+                required.update({
+                    'specifications': 'specifications',
+                    'device_unlocked': 'device unlock status'
+                })
+            elif is_smartwatch:
+                required['device_unlocked'] = 'device unlock status'
+
+            print(f"   Fallback requirements: {list(required.keys())}")
 
         return required
 
@@ -113,13 +148,18 @@ Return ONLY a JSON object:
         if not result.get('completed', False):
             return result
 
-        # Check if we have all required fields
-        required_fields = self._get_required_fields(product_info)
-        missing_fields = []
+        try:
+            # Check if we have all required fields
+            required_fields = self._get_required_fields(product_info)
+            missing_fields = []
 
-        for field, description in required_fields.items():
-            if field not in product_info or not product_info[field]:
-                missing_fields.append(description)
+            for field, description in required_fields.items():
+                if field not in product_info or not product_info[field]:
+                    missing_fields.append(description)
+        except Exception as e:
+            print(f"❌ Validation error: {e}")
+            print(f"   Allowing completion to proceed (fail-safe)")
+            return result
 
         # If fields are missing, override completion and force next question
         if missing_fields:
