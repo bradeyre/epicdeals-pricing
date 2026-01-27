@@ -114,7 +114,12 @@ class AIService:
             missing_fields = []
 
             for field, description in required_fields.items():
-                if field not in product_info or not product_info[field]:
+                # Special handling for capacity which is nested in specifications
+                if field == 'capacity':
+                    specs = product_info.get('specifications', {})
+                    if not specs or not specs.get('capacity'):
+                        missing_fields.append(description)
+                elif field not in product_info or not product_info[field]:
                     missing_fields.append(description)
         except Exception as e:
             print(f"❌ Validation error: {e}")
@@ -784,7 +789,12 @@ DO NOT write anything except the JSON above. Start your response with { and end 
             required_fields = self._get_required_fields(product_info)
             missing_fields = []
             for field, description in required_fields.items():
-                if field not in product_info or not product_info[field]:
+                # Special handling for capacity which is nested in specifications
+                if field == 'capacity':
+                    specs = product_info.get('specifications', {})
+                    if not specs or not specs.get('capacity'):
+                        missing_fields.append(description)
+                elif field not in product_info or not product_info[field]:
                     missing_fields.append(description)
 
             if missing_fields:
