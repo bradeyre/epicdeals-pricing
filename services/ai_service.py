@@ -817,12 +817,26 @@ DO NOT write anything except the JSON above. Start your response with { and end 
                 # No missing fields - try to extract question from plain text response
                 print(f"   ⚠️  No missing fields found, attempting to parse plain text response")
 
-                # Check if response_text contains a contract-related question
                 response_lower = response_text.lower()
+                brand = product_info.get('brand', '')
+                model = product_info.get('model', 'device')
+
+                # Check for unlock question
+                if 'unlock' in response_lower or 'icloud' in response_lower:
+                    print(f"   📋 Detected unlock question in plain text, generating structured version")
+                    return {
+                        "question": f"Is your {brand} {model} unlocked from iCloud?",
+                        "field_name": "device_unlocked",
+                        "type": "multiple_choice",
+                        "options": ["Yes - Fully unlocked from iCloud", "No - Still locked to iCloud", "Not sure"],
+                        "completed": False
+                    }
+
+                # Check for contract question
                 if 'contract' in response_lower or 'payment plan' in response_lower:
                     print(f"   📋 Detected contract question in plain text, generating structured version")
                     return {
-                        "question": f"Is your {product_info.get('brand', '')} {product_info.get('model', 'device')} free from any contract or payment plan?",
+                        "question": f"Is your {brand} {model} free from any contract or payment plan?",
                         "field_name": "contract_free",
                         "type": "multiple_choice",
                         "options": ["Yes - Fully paid off, no contracts", "No - Still under contract or payment plan"],
