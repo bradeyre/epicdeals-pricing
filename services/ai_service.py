@@ -117,8 +117,12 @@ class AIService:
                 # Special handling for capacity which is nested in specifications
                 if field == 'capacity':
                     specs = product_info.get('specifications', {})
+                    print(f"   🔍 Checking capacity: specifications={specs}, capacity={specs.get('capacity') if specs else 'N/A'}")
                     if not specs or not specs.get('capacity'):
+                        print(f"   ❌ Capacity missing!")
                         missing_fields.append(description)
+                    else:
+                        print(f"   ✅ Capacity found: {specs.get('capacity')}")
                 elif field not in product_info or not product_info[field]:
                     missing_fields.append(description)
         except Exception as e:
@@ -792,8 +796,12 @@ DO NOT write anything except the JSON above. Start your response with { and end 
                 # Special handling for capacity which is nested in specifications
                 if field == 'capacity':
                     specs = product_info.get('specifications', {})
+                    print(f"   🔍 Checking capacity: specifications={specs}, capacity={specs.get('capacity') if specs else 'N/A'}")
                     if not specs or not specs.get('capacity'):
+                        print(f"   ❌ Capacity missing!")
                         missing_fields.append(description)
+                    else:
+                        print(f"   ✅ Capacity found: {specs.get('capacity')}")
                 elif field not in product_info or not product_info[field]:
                     missing_fields.append(description)
 

@@ -155,9 +155,11 @@ def submit_answer():
             if value is not None:
                 if key == 'specifications' and key in product_info:
                     # Merge specifications dict
+                    print(f"   🔄 Merging specifications: existing={product_info[key]}, new={value}")
                     if product_info[key] is None:
                         product_info[key] = {}
                     product_info[key].update(value)
+                    print(f"   ✅ After merge: {product_info[key]}")
                 else:
                     product_info[key] = value
 
