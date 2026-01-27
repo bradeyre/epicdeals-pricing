@@ -467,11 +467,18 @@ class ConditionAssessmentService:
         if not damage_details:
             return classification
 
-        # Check for "None - Everything works perfectly"
-        none_selected = any('none' in str(issue).lower() and 'works' in str(issue).lower()
-                          for issue in damage_details)
+        # Handle string input (convert to list)
+        if isinstance(damage_details, str):
+            damage_details = [damage_details]
 
-        if none_selected:
+        # Check for "None - Everything works perfectly" or "No issues mentioned"
+        for issue in damage_details:
+            issue_str = str(issue).lower()
+            if any(phrase in issue_str for phrase in ['no issues', 'no damage', 'pristine', 'perfect', 'everything works']):
+                return classification
+
+        # If we only have "None" or similar, skip
+        if all(str(issue).strip().lower() in ['none', 'no', ''] for issue in damage_details):
             return classification
 
         # Universal BER keywords (category-agnostic)
