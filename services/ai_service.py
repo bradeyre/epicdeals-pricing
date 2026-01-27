@@ -775,12 +775,35 @@ DO NOT write anything except the JSON above. Start your response with { and end 
             print(f"   Error: {e}")
             print(f"   Raw response: {response_text}")
             print(f"   Full AI response: {response.content[0].text}")
-            return {
-                "question": "What type of item do you want to sell?",
-                "field_name": "item_description",
-                "type": "text",
-                "completed": False
-            }
+
+            # INTELLIGENT FALLBACK: Check if validation would generate a question
+            # This handles Haiku returning plain text instead of JSON
+            print(f"\n🔧 ATTEMPTING INTELLIGENT FALLBACK:")
+            print(f"   Checking if we have missing required fields...")
+
+            required_fields = self._get_required_fields(product_info)
+            missing_fields = []
+            for field, description in required_fields.items():
+                if field not in product_info or not product_info[field]:
+                    missing_fields.append(description)
+
+            if missing_fields:
+                # Generate the next required question
+                print(f"   ✅ Found missing field: {missing_fields[0]}")
+                print(f"   Generating structured question for: {missing_fields[0]}")
+                fallback_question = self._generate_missing_field_question(product_info, missing_fields[0])
+                fallback_question['completed'] = False
+                print(f"   📋 Fallback question: {fallback_question.get('question', 'N/A')}")
+                return fallback_question
+            else:
+                # No missing fields, return generic error question
+                print(f"   ⚠️  No missing fields found, returning generic fallback")
+                return {
+                    "question": "What type of item do you want to sell?",
+                    "field_name": "item_description",
+                    "type": "text",
+                    "completed": False
+                }
 
     def extract_product_details(self, conversation_history):
         """
