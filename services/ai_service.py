@@ -831,7 +831,22 @@ DO NOT write anything except the JSON above. Start your response with { and end 
             Dict with product details: category, brand, model, specs, condition, damage
         """
 
-        system_prompt = """Analyze the conversation and extract all product details.
+        system_prompt = """╔══════════════════════════════════════════════════════════════╗
+║  RESPONSE FORMAT - ABSOLUTELY CRITICAL - NO EXCEPTIONS      ║
+╚══════════════════════════════════════════════════════════════╝
+
+YOU MUST RESPOND WITH ONLY VALID JSON - NOTHING ELSE
+⚠️  NO explanations, NO text before JSON, NO text after JSON ⚠️
+⚠️  WRONG: "Got it, here are the details I've extracted: {...}" ⚠️
+✅  CORRECT: {...}
+
+EVERY response MUST start with { and end with }
+DO NOT write "Here are the details" or any other text.
+START your response with { and END with }
+
+═══════════════════════════════════════════════════════════════
+
+Analyze the conversation and extract all product details.
 
 Return a JSON object with these fields (use null if not mentioned):
 {
@@ -864,6 +879,11 @@ CRITICAL DAMAGE EXTRACTION RULES:
 - NEVER leave damage_details as null if damage was discussed
 
 IMPORTANT: Extract device_unlocked and contract_free from conversation if those questions were asked.
+
+═══════════════════════════════════════════════════════════════
+REMEMBER: Your response MUST be ONLY the JSON object.
+Start with { and end with }. NO other text.
+═══════════════════════════════════════════════════════════════
 """
 
         messages = []
