@@ -315,9 +315,17 @@ WHEN TO ASK YEAR (rare cases):
 - "Dell XPS 15" → Multi-year model, ASK: "What year is your Dell XPS 15?"
 - "Samsung TV" → No specific model, ASK: "What year was it purchased?"
 
-RESPONSE FORMAT - CRITICAL:
-You MUST respond with ONLY valid JSON, nothing else. No explanations, no text before or after.
-EVERY response MUST contain a "question" field with the actual question text to ask the user.
+╔══════════════════════════════════════════════════════════════╗
+║  RESPONSE FORMAT - ABSOLUTELY CRITICAL - NO EXCEPTIONS      ║
+╚══════════════════════════════════════════════════════════════╝
+
+YOU MUST RESPOND WITH ONLY VALID JSON - NOTHING ELSE
+⚠️  NO explanations, NO text before JSON, NO text after JSON ⚠️
+⚠️  WRONG: "Is your iPhone 14 unlocked from iCloud?" ⚠️
+✅  CORRECT: {"question": "Is your iPhone 14 unlocked from iCloud?", "field_name": "device_unlocked", ...}
+
+EVERY response MUST start with { and end with }
+EVERY response MUST contain ALL required fields: "question", "field_name", "type", "completed"
 
 WHEN TO USE MULTIPLE CHOICE vs TEXT:
 - Use "multiple_choice" for: storage capacity (when you know the exact options for that model), condition, damage details, RAM configs, screen sizes
@@ -682,7 +690,20 @@ CURRENT PRODUCT INFO:
 """ + str(product_info) + """
 
 CONVERSATION HISTORY (check for duplicate questions):
-""" + str([msg['content'] for msg in conversation_history if msg['role'] == 'assistant'])
+""" + str([msg['content'] for msg in conversation_history if msg['role'] == 'assistant']) + """
+
+═══════════════════════════════════════════════════════════════
+YOUR RESPONSE MUST USE THIS EXACT JSON TEMPLATE - NO OTHER FORMAT:
+═══════════════════════════════════════════════════════════════
+{
+    "question": "<the actual question text goes here>",
+    "field_name": "<the field name>",
+    "type": "<text|multiple_choice|multi_select>",
+    "options": [<only if type is multiple_choice or multi_select>],
+    "completed": <true|false>
+}
+═══════════════════════════════════════════════════════════════
+DO NOT write anything except the JSON above. Start your response with { and end with }"""
 
         # Build conversation messages
         messages = []
