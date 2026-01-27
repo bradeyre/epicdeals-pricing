@@ -42,6 +42,10 @@ class IntelligentRepairCostService:
                 'confidence': 1.0
             }
 
+        # Handle string input (convert to list)
+        if isinstance(damage_details, str):
+            damage_details = [damage_details]
+
         print(f"\n{'='*60}")
         print(f"INTELLIGENT REPAIR COST RESEARCH")
         print(f"Product: {product_info.get('brand')} {product_info.get('model')}")
@@ -84,8 +88,17 @@ class IntelligentRepairCostService:
         if not damage_details:
             return True
 
+        # Handle string input (convert to list)
+        if isinstance(damage_details, str):
+            damage_details = [damage_details]
+
         for damage in damage_details:
-            if not ('none' in str(damage).lower() and 'works' in str(damage).lower()):
+            damage_str = str(damage).lower()
+            # Check for "no damage" indicators
+            if any(phrase in damage_str for phrase in ['no issues', 'no damage', 'pristine', 'perfect condition', 'everything works']):
+                continue
+            # If we find actual damage, return False
+            if damage_str and damage_str not in ['none', 'no']:
                 return False
 
         return True
