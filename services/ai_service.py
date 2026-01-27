@@ -834,10 +834,16 @@ Return a JSON object with these fields (use null if not mentioned):
         "functional": "fully_working|some_issues|not_working",
         "notes": "Any other damage mentioned"
     },
-    "damage_details": "Summary of damage/issues mentioned",
+    "damage_details": "Summary of damage/issues mentioned (use 'No issues mentioned' or 'Pristine condition' if user said none/everything works/no damage)",
     "device_unlocked": "yes|no|not_asked (if device unlock was discussed)",
     "contract_free": "yes|no|not_asked (if contract status was discussed)"
 }
+
+CRITICAL DAMAGE EXTRACTION RULES:
+- If user selected "None - Everything works perfectly" or similar → damage_details: "No issues mentioned"
+- If user said "no damage", "everything works", "pristine", "perfect" → damage_details: "No issues mentioned"
+- If user mentioned specific issues → damage_details: "Brief summary of issues"
+- NEVER leave damage_details as null if damage was discussed
 
 IMPORTANT: Extract device_unlocked and contract_free from conversation if those questions were asked.
 """
