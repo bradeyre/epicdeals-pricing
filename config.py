@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 class Config:
@@ -15,6 +15,9 @@ class Config:
     # Anthropic AI
     ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
     ANTHROPIC_MODEL = 'claude-3-haiku-20240307'  # Using Haiku - Sonnet causes OOM on free Render tier
+
+    # Perplexity AI
+    PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')
 
     # Email
     SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
