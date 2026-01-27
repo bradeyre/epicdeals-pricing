@@ -814,43 +814,84 @@ DO NOT write anything except the JSON above. Start your response with { and end 
                 print(f"   📋 Fallback question: {fallback_question.get('question', 'N/A')}")
                 return fallback_question
             else:
-                # No missing fields - try to extract question from plain text response
-                print(f"   ⚠️  No missing fields found, attempting to parse plain text response")
+                # No missing fields - AI returned plain text instead of JSON
+                # Use universal plain text parser to convert ANY question to structured format
+                print(f"   ⚠️  No missing fields found, attempting universal plain text parsing")
+                print(f"   📝 Plain text response: {response_text[:200]}")
 
-                response_lower = response_text.lower()
-                brand = product_info.get('brand', '')
-                model = product_info.get('model', 'device')
-
-                # Check for unlock question
-                if 'unlock' in response_lower or 'icloud' in response_lower:
-                    print(f"   📋 Detected unlock question in plain text, generating structured version")
-                    return {
-                        "question": f"Is your {brand} {model} unlocked from iCloud?",
-                        "field_name": "device_unlocked",
-                        "type": "multiple_choice",
-                        "options": ["Yes - Fully unlocked from iCloud", "No - Still locked to iCloud", "Not sure"],
-                        "completed": False
-                    }
-
-                # Check for contract question
-                if 'contract' in response_lower or 'payment plan' in response_lower:
-                    print(f"   📋 Detected contract question in plain text, generating structured version")
-                    return {
-                        "question": f"Is your {brand} {model} free from any contract or payment plan?",
-                        "field_name": "contract_free",
-                        "type": "multiple_choice",
-                        "options": ["Yes - Fully paid off, no contracts", "No - Still under contract or payment plan"],
-                        "completed": False
-                    }
+                try:
+                    structured_question = self._parse_plain_text_question(response_text, product_info)
+                    if structured_question:
+                        print(f"   ✅ Successfully parsed plain text to structured question")
+                        return structured_question
+                except Exception as e:
+                    print(f"   ❌ Plain text parsing failed: {e}")
 
                 # Return generic fallback as last resort
-                print(f"   ⚠️  Could not parse plain text, returning generic fallback")
+                print(f"   ⚠️  Returning generic fallback")
                 return {
                     "question": "What type of item do you want to sell?",
                     "field_name": "item_description",
                     "type": "text",
                     "completed": False
                 }
+
+    def _parse_plain_text_question(self, plain_text, product_info):
+        """
+        Universal parser that converts ANY plain text question to structured JSON.
+        Uses a lightweight AI call to intelligently structure the question.
+        """
+        prompt = f"""Convert this plain text question into a structured JSON format.
+
+Plain text: {plain_text}
+
+Product context: {product_info.get('brand', '')} {product_info.get('model', '')} ({product_info.get('category', '')})
+
+YOU MUST respond with ONLY valid JSON in this exact format:
+{{
+    "question": "the actual question text",
+    "field_name": "appropriate_field_name",
+    "type": "text|multiple_choice",
+    "options": ["option1", "option2"] (only if type is multiple_choice),
+    "completed": false
+}}
+
+RULES:
+- Extract the question from the plain text
+- If it's yes/no or has clear options, use type: "multiple_choice"
+- Field names: device_unlocked, contract_free, warranty, accessories, original_box, etc.
+- NO explanations, ONLY JSON
+- Start with {{ and end with }}
+"""
+
+        try:
+            response = self.client.messages.create(
+                model='claude-3-haiku-20240307',  # Fast model for this simple task
+                max_tokens=500,
+                temperature=0,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = response.content[0].text.strip()
+            print(f"   🤖 AI parser response: {response_text[:200]}")
+
+            # Try to extract JSON even if there's extra text
+            import json
+            import re
+
+            # Find JSON object in response
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                structured = json.loads(json_str)
+                structured['completed'] = False  # Ensure this is always false
+                return structured
+
+            return None
+
+        except Exception as e:
+            print(f"   ❌ Universal parser error: {e}")
+            return None
 
     def extract_product_details(self, conversation_history):
         """
