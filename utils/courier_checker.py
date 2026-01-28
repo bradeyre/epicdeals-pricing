@@ -39,6 +39,27 @@ def is_courier_eligible(product_info: dict) -> dict:
             'is_silly': False
         }
 
+    # Check for explicit multiple item indicators
+    import re
+    multiple_indicators = [
+        r'\b\d+\s*x\b',  # "2x", "5 x"
+        r'\bx\s*\d+\b',  # "x2", "x 5"
+        r'\b(two|three|four|five|six|seven|eight|nine|ten)\s+(iphone|samsung|macbook|ipad|gopro|laptop|phone|tablet|camera)',
+        r'\bmultiple\b',
+        r'\bseveral\b',
+        r'\bbunch of\b'
+    ]
+
+    full_text_lower = full_text.lower()
+    for pattern in multiple_indicators:
+        if re.search(pattern, full_text_lower):
+            return {
+                'eligible': False,
+                'reason': 'We appreciate your interest! For multiple items, please submit each one separately for the most accurate pricing. This ensures we can properly evaluate the condition and specifications of each device.',
+                'category_matched': 'multiple_items',
+                'is_silly': False
+            }
+
     # Use AI to determine courier eligibility
     try:
         print(f"\n🤖 AI COURIER CHECK: Analyzing '{full_text}'...")
