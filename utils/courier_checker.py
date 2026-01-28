@@ -45,12 +45,16 @@ def is_courier_eligible(product_info: dict) -> dict:
 
         client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
 
-        prompt = f"""Can "{full_text}" be shipped in a courier bag or small parcel box?
+        prompt = f"""The user wants to sell ONE (1) single item: "{full_text}"
+
+Can this SINGLE ITEM be shipped in a courier bag or small parcel box?
+
+CRITICAL: This is ONE item, not multiple items. Numbers in the model name (like "iPhone 14", "iPhone 16", "Galaxy S21") are just the model version, NOT the quantity.
 
 ASK YOURSELF:
-1. Can this item fit in a standard courier bag or small box?
-2. Can one person carry it easily?
-3. Does it weigh under 25kg?
+1. Can this ONE item fit in a standard courier bag or small box?
+2. Can one person carry this ONE item easily?
+3. Does this ONE item weigh under 25kg?
 4. Is it SAFE to ship? (Not hazardous, chemical, food, liquid, perishable, or restricted)
 5. Is it USED ELECTRONICS? (We only buy used electronics - phones, laptops, tablets, cameras, watches, etc.)
 
@@ -59,19 +63,22 @@ If YES to ALL → {{"eligible": true}}
 
 Is it a living thing, vehicle, furniture, large appliance, or fictional item? → {{"is_silly": true}}
 
-IMPORTANT: Generate a witty, friendly rejection message for non-eligible items. Be creative and humorous while staying professional.
+IMPORTANT FOR ELIGIBLE ITEMS: Generate a friendly, welcoming message explaining how we'll ship this item.
+IMPORTANT FOR NON-ELIGIBLE ITEMS: Generate a witty, friendly rejection message. Be creative and humorous while staying professional.
 
 Output ONLY JSON:
-{{"eligible": true/false, "is_silly": true/false, "category_matched": "type", "reason": "witty message explaining why we can't accept this item"}}
+{{"eligible": true/false, "is_silly": true/false, "category_matched": "type", "reason": "message"}}
 
 Example thinking:
-- iPhone, MacBook, iPad, Samsung phone → used electronics → fits in bag → eligible
+- "iPhone 16" → ONE phone (model 16) → used electronics → fits in bag → ELIGIBLE
+- "iPhone 14" → ONE phone (model 14) → used electronics → fits in bag → ELIGIBLE
+- "Galaxy S21" → ONE phone (model S21) → used electronics → fits in bag → ELIGIBLE
 - Piano, couch, fridge → too large → not eligible, witty message
 - Drain cleaner, chemicals, food → not electronics OR hazardous → not eligible
 - Animals, vehicles → absurd → not eligible, is_silly, humorous message
 - Clothing, books, toys → not electronics → not eligible
 
-Analyze "{full_text}":"""
+Analyze ONE (1) item: "{full_text}":"""
 
         print(f"   Calling Claude API...")
         response = client.messages.create(
