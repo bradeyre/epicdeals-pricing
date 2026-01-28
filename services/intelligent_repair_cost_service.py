@@ -332,7 +332,7 @@ Details: [brief explanation]"
         if 'ifix' in content_lower:
             sources.append('iFix')
         if 'repair' in content_lower and 'shop' in content_lower:
-            sources.append('Local repair shops')
+            sources.append('local repair shops')
 
         if sources:
             return f"Based on {', '.join(sources)}"

@@ -280,9 +280,8 @@ class EpicDealsApp {
     }
 
     getProductSummary(offer) {
-        // Try to get product info from offer or from stored session
-        const priceResearch = offer.price_research || {};
-        const productInfo = priceResearch.product_info || this.productInfo || {};
+        // Get product info from offer (now included in backend response)
+        const productInfo = offer.product_info || this.productInfo || {};
 
         const brand = productInfo.brand || 'Unknown Brand';
         const model = productInfo.model || 'Unknown Model';
@@ -430,49 +429,50 @@ class EpicDealsApp {
 
                 <div class="offer-breakdown">
                     <div class="breakdown-item">
-                        <span>Market Value (Median)</span>
+                        <span>Market Value (working condition)</span>
                         <span>R${this.formatNumber(offer.market_value)}</span>
                     </div>
                     ${offer.repair_costs > 0 ? `
-                    <div class="breakdown-item condition-header">
-                        <span>Condition Adjustment</span>
-                        <span>×${(offer.after_condition / offer.market_value * 100).toFixed(0)}%</span>
+                    <div class="breakdown-item negative">
+                        <span>Less: Estimated Repair Costs</span>
+                        <span>-R${this.formatNumber(offer.repair_costs)}</span>
                     </div>
-                    <div class="breakdown-item">
-                        <span>After Condition</span>
-                        <span>R${this.formatNumber(offer.after_condition)}</span>
+                    <div class="breakdown-item adjusted-value">
+                        <span>Value to Us</span>
+                        <span>R${this.formatNumber(offer.adjusted_value)}</span>
                     </div>
                     ` : ''}
                 </div>
 
                 ${repairBreakdownHTML}
 
-                ${offer.repair_costs > 0 ? `
-                <div class="offer-breakdown">
-                    <div class="breakdown-item adjusted-value">
-                        <span>Adjusted Value</span>
-                        <span>R${this.formatNumber(offer.adjusted_value)}</span>
-                    </div>
-                </div>
-                ` : ''}
-
                 <div class="vat-notice">
                     <p style="font-size: 0.9em; color: #666;">All prices include VAT</p>
                 </div>
 
-                <div class="dual-offers">
-                    <div class="offer-option sell-now">
-                        <h3>OPTION 1: SELL NOW</h3>
-                        <div class="option-amount">R${this.formatNumber(offer.sell_now_offer)}</div>
-                        <p class="option-description">Immediate payment (65%)</p>
-                    </div>
+                <div class="offer-selection-prompt">
+                    <h3 style="margin-bottom: 20px;">Choose your preferred option:</h3>
+                </div>
 
-                    <div class="offer-option consignment">
-                        <h3>OPTION 2: CONSIGNMENT</h3>
-                        <div class="option-amount highlight">R${this.formatNumber(offer.consignment_payout)}</div>
-                        <p class="option-description">After sale (85%)</p>
-                        <p class="savings">💰 That's R${this.formatNumber(offer.consignment_payout - offer.sell_now_offer)} MORE!</p>
-                    </div>
+                <div class="dual-offers">
+                    <label class="offer-option sell-now" for="offer-sell-now">
+                        <input type="radio" name="offer-choice" id="offer-sell-now" value="sell_now" />
+                        <div class="offer-content">
+                            <h3>OPTION 1: SELL NOW</h3>
+                            <div class="option-amount">R${this.formatNumber(offer.sell_now_offer)}</div>
+                            <p class="option-description">Immediate payment (65%)</p>
+                        </div>
+                    </label>
+
+                    <label class="offer-option consignment" for="offer-consignment">
+                        <input type="radio" name="offer-choice" id="offer-consignment" value="consignment" checked />
+                        <div class="offer-content">
+                            <h3>OPTION 2: CONSIGNMENT</h3>
+                            <div class="option-amount highlight">R${this.formatNumber(offer.consignment_payout)}</div>
+                            <p class="option-description">After sale (85%)</p>
+                            <p class="savings">💰 That's R${this.formatNumber(offer.consignment_payout - offer.sell_now_offer)} MORE!</p>
+                        </div>
+                    </label>
                 </div>
 
                 <div class="pricing-dispute">

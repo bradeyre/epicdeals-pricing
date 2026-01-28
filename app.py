@@ -255,6 +255,9 @@ def calculate_offer():
         # Store offer in session for later use
         session['offer_data'] = offer_data
 
+        # Add product_info to the response so frontend can display it
+        offer_data['product_info'] = product_info
+
         return jsonify({
             'success': True,
             'offer': offer_data
