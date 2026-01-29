@@ -714,6 +714,21 @@ YOUR RESPONSE MUST USE THIS EXACT JSON TEMPLATE - NO OTHER FORMAT:
 ═══════════════════════════════════════════════════════════════
 DO NOT write anything except the JSON above. Start your response with { and end with }"""
 
+        # CRITICAL: Add explicit check to prevent duplicate questions about fields we already have
+        fields_already_covered = []
+        if product_info.get('damage_details'):
+            fields_already_covered.append('damage')
+        if product_info.get('device_unlocked'):
+            fields_already_covered.append('unlock')
+        if product_info.get('contract_free'):
+            fields_already_covered.append('contract')
+        if product_info.get('specifications', {}).get('capacity'):
+            fields_already_covered.append('storage/capacity')
+
+        if fields_already_covered:
+            system_prompt += f"\n\n🚨 CRITICAL - FIELDS ALREADY ANSWERED (DO NOT ASK AGAIN): {', '.join(fields_already_covered)}\n"
+            system_prompt += f"If you were about to ask about {fields_already_covered}, SKIP IT and ask the NEXT required question instead!\n"
+
         # Build conversation messages
         messages = []
         for msg in conversation_history:
