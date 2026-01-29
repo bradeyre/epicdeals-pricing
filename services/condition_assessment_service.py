@@ -579,16 +579,29 @@ class ConditionAssessmentService:
             }
 
         # Rule 3: Repair cost percentage threshold (dynamic)
+        # ONLY apply this for multiple issues or functional failures
+        # Single structural damage (screen, back glass) is always repairable
         if repair_cost > 0 and market_value > 0:
             repair_percentage = (repair_cost / market_value) * 100
 
-            # Dynamic threshold based on product value
-            if market_value < 2000:
-                threshold = 50  # Low-value items: more tolerance
+            # If ONLY cosmetic/structural damage (no functional failures), be more tolerant
+            has_functional_issues = len(damage_classification['functional_failure']) > 0
+            single_structural_issue = (
+                len(damage_classification['structural']) == 1 and
+                len(damage_classification['functional_failure']) == 0 and
+                len(damage_classification['ber_flags']) == 0
+            )
+
+            # Dynamic threshold based on product value and damage type
+            if single_structural_issue:
+                # Single repairable issue (screen, back glass) - very tolerant
+                threshold = 80  # Even high repair costs OK for single fixable issues
+            elif market_value < 2000:
+                threshold = 60  # Low-value items: more tolerance
             elif market_value < 10000:
-                threshold = 35  # Mid-value: moderate
+                threshold = 50  # Mid-value: moderate
             else:
-                threshold = 25  # High-value: strict
+                threshold = 40  # High-value: reasonable (was 25%, too strict)
 
             if repair_percentage > threshold:
                 return {
