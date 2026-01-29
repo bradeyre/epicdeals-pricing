@@ -716,18 +716,35 @@ DO NOT write anything except the JSON above. Start your response with { and end 
 
         # CRITICAL: Add explicit check to prevent duplicate questions about fields we already have
         fields_already_covered = []
+        field_details = []
+
         if product_info.get('damage_details'):
-            fields_already_covered.append('damage')
+            fields_already_covered.append('damage_details')
+            field_details.append(f"damage_details='{product_info.get('damage_details')}'")
+
         if product_info.get('device_unlocked'):
-            fields_already_covered.append('unlock')
+            fields_already_covered.append('device_unlocked')
+            field_details.append(f"device_unlocked='{product_info.get('device_unlocked')}'")
+
         if product_info.get('contract_free'):
-            fields_already_covered.append('contract')
-        if product_info.get('specifications', {}).get('capacity'):
-            fields_already_covered.append('storage/capacity')
+            fields_already_covered.append('contract_free')
+            field_details.append(f"contract_free='{product_info.get('contract_free')}'")
+
+        capacity = product_info.get('specifications', {}).get('capacity')
+        if capacity:
+            fields_already_covered.append('capacity')
+            field_details.append(f"capacity='{capacity}'")
 
         if fields_already_covered:
-            system_prompt += f"\n\n🚨 CRITICAL - FIELDS ALREADY ANSWERED (DO NOT ASK AGAIN): {', '.join(fields_already_covered)}\n"
-            system_prompt += f"If you were about to ask about {fields_already_covered}, SKIP IT and ask the NEXT required question instead!\n"
+            system_prompt += f"\n\n{'='*70}\n"
+            system_prompt += f"🚨 CRITICAL - THESE FIELDS ARE ALREADY ANSWERED - DO NOT ASK AGAIN:\n"
+            system_prompt += f"{'='*70}\n"
+            for detail in field_details:
+                system_prompt += f"  ✓ {detail}\n"
+            system_prompt += f"{'='*70}\n"
+            system_prompt += f"DO NOT ask about: {', '.join(fields_already_covered)}\n"
+            system_prompt += f"SKIP these fields and ask the NEXT required question!\n"
+            system_prompt += f"{'='*70}\n\n"
 
         # Build conversation messages
         messages = []
