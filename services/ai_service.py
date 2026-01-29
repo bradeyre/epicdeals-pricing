@@ -714,10 +714,15 @@ YOUR RESPONSE MUST USE THIS EXACT JSON TEMPLATE - NO OTHER FORMAT:
 ═══════════════════════════════════════════════════════════════
 DO NOT write anything except the JSON above. Start your response with { and end with }"""
 
-        # CRITICAL: Add explicit check to prevent duplicate questions about fields we already have
+        # CRITICAL: Prevent duplicate questions by tracking BOTH:
+        # 1. Fields that have been successfully answered
+        # 2. Questions that have been asked (even if user said "I don't know")
+
         fields_already_covered = []
         field_details = []
+        questions_already_asked = set()
 
+        # Track successfully answered fields
         if product_info.get('damage_details'):
             fields_already_covered.append('damage_details')
             field_details.append(f"damage_details='{product_info.get('damage_details')}'")
@@ -735,15 +740,57 @@ DO NOT write anything except the JSON above. Start your response with { and end 
             fields_already_covered.append('capacity')
             field_details.append(f"capacity='{capacity}'")
 
+        # NEW: Track questions already asked by scanning conversation history
+        # This catches cases where user said "I don't know" or gave unclear answers
+        for msg in conversation_history:
+            if msg['role'] == 'assistant':
+                question_lower = msg['content'].lower()
+
+                # Detect questions about specific topics (regardless of exact wording)
+                if any(phrase in question_lower for phrase in ['storage capacity', 'storage size', 'how much storage']):
+                    questions_already_asked.add('capacity/storage')
+
+                if any(phrase in question_lower for phrase in ['what size', 'what is the size', 'dimensions', 'screen size']):
+                    questions_already_asked.add('size/dimensions')
+
+                if any(phrase in question_lower for phrase in ['unlocked from icloud', 'device unlocked', 'account locked']):
+                    questions_already_asked.add('device_unlock')
+
+                if any(phrase in question_lower for phrase in ['contract', 'payment plan', 'financed']):
+                    questions_already_asked.add('contract_status')
+
+                if any(phrase in question_lower for phrase in ['any of these issues', 'damage', 'working perfectly', 'issues with']):
+                    questions_already_asked.add('damage_assessment')
+
+                if any(phrase in question_lower for phrase in ['what condition', 'condition are', 'condition is']):
+                    questions_already_asked.add('general_condition')
+
+        # Build warning message
+        warning_parts = []
+
         if fields_already_covered:
-            system_prompt += f"\n\n{'='*70}\n"
-            system_prompt += f"🚨 CRITICAL - THESE FIELDS ARE ALREADY ANSWERED - DO NOT ASK AGAIN:\n"
-            system_prompt += f"{'='*70}\n"
+            warning_parts.append(f"✅ FIELDS WITH ANSWERS (do not ask again):")
             for detail in field_details:
-                system_prompt += f"  ✓ {detail}\n"
+                warning_parts.append(f"   {detail}")
+
+        if questions_already_asked:
+            warning_parts.append(f"\n🚫 QUESTIONS ALREADY ASKED (do not repeat, even if user said 'I don't know'):")
+            for topic in questions_already_asked:
+                warning_parts.append(f"   - {topic}")
+
+        if warning_parts:
+            system_prompt += f"\n\n{'='*70}\n"
+            system_prompt += f"🚨 CRITICAL - DO NOT ASK DUPLICATE QUESTIONS:\n"
             system_prompt += f"{'='*70}\n"
-            system_prompt += f"DO NOT ask about: {', '.join(fields_already_covered)}\n"
-            system_prompt += f"SKIP these fields and ask the NEXT required question!\n"
+            system_prompt += "\n".join(warning_parts)
+            system_prompt += f"\n{'='*70}\n"
+            if fields_already_covered:
+                system_prompt += f"SKIP these answered fields: {', '.join(fields_already_covered)}\n"
+            if questions_already_asked:
+                system_prompt += f"DO NOT re-ask about topics: {', '.join(questions_already_asked)}\n"
+                system_prompt += f"If user said 'I don't know' to optional specs, SKIP that topic entirely!\n"
+            system_prompt += f"Ask the NEXT required question that hasn't been asked yet!\n"
+            system_prompt += f"\n🚫 NEVER ask general 'What condition' questions - go straight to damage assessment!\n"
             system_prompt += f"{'='*70}\n\n"
 
         # Build conversation messages
