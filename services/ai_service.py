@@ -257,6 +257,12 @@ BEFORE ASKING ANY QUESTION - MANDATORY CHECKS:
 3. Extract information from the LATEST user message BEFORE deciding what to ask
 4. If information is already available, SKIP to the next needed question
 5. NEVER ask for information that's in CURRENT PRODUCT INFO
+6. 🔥 COMPLETE MODEL = SKIP ALL SPEC QUESTIONS:
+   If model name contains specific codes/numbers (HX60L, EOS R5, V15, Hero 12, etc.),
+   this identifies the EXACT product variant. ALL specs are FIXED.
+   DO NOT ask size, magnification, capacity, sensor, or ANY specs.
+   Exception: Phones/laptops/tablets ALWAYS need storage even with complete model
+   For everything else: Complete model → Go STRAIGHT to damage assessment!
 
 ESSENTIAL INFORMATION (ONLY what affects resale value):
 - Item category (phone, laptop, tablet, camera, watch, appliance, console, etc.)
@@ -282,23 +288,38 @@ ESSENTIAL INFORMATION (ONLY what affects resale value):
      - The model is truly ambiguous (e.g., "Samsung TV" without model number)
   5. For phones/tablets: Almost NEVER ask year - you know the release date
   6. For laptops: Only ask if model doesn't include year and was produced 2+ years
-- Key specifications that affect pricing:
-  - Phones/tablets: storage capacity (64GB, 128GB, etc.) - DON'T ask about color
-    CRITICAL FOR ALL PRODUCTS: Before asking about ANY specification that has limited variations (storage, RAM, screen size, etc.):
-    1. Use your knowledge to determine what variations exist for that specific model
-    2. Provide ONLY the valid options as multiple choice
-    3. This applies to: phones (storage), laptops (RAM/storage configs), TVs (screen sizes), tablets (storage), etc.
-    Examples:
-    - iPhone 16 Pro Max: 256GB, 512GB, 1TB (released 2024)
-    - iPhone 11: 64GB, 128GB, 256GB (released 2019)
-    - MacBook Air M2: 8GB/256GB, 8GB/512GB, 16GB/512GB, 24GB/2TB configs
-    - Samsung Galaxy S24: 128GB, 256GB, 512GB
-  - Laptops: RAM, storage, screen size, processor (M1, M2, M3, Intel i5/i7/i9, etc.)
-    Look up available configurations for the specific model
-  - TVs: screen size, technology (OLED, QLED, LED)
-    Look up available sizes for that specific model series
-  - Cameras: sensor size, lens included
-  - Appliances: capacity/size, energy rating
+- Key specifications that affect pricing (ONLY ASK IF THEY CREATE PRICE VARIATIONS):
+
+  🧠 INTELLIGENT SPEC DETECTION - Use your knowledge to determine:
+  1. Does this specific model come in MULTIPLE VARIANTS with different prices?
+  2. If YES → Ask about the variant (storage, RAM, screen size, etc.)
+  3. If NO (complete/specific model number) → DON'T ask for specs, just ask about damage
+
+  EXAMPLES OF WHEN TO ASK:
+  - "iPhone 16" → ASK storage (comes in 128GB, 256GB, 512GB - different prices)
+  - "MacBook Air M2" → ASK config (8GB/256GB, 16GB/512GB, etc. - different prices)
+  - "Samsung Galaxy S24" → ASK storage (128GB, 256GB, 512GB - different prices)
+  - "Sony 55-inch TV" → ASK specific model (X90L, X95L, A80L - different models/prices)
+
+  EXAMPLES OF WHEN NOT TO ASK:
+  - "Hikmicro Habrok Pro HX60L Multi-Spectrum Binoculars" → DON'T ask size (complete model, HX60L already specifies 60mm, no variants)
+  - "Canon EOS R5" → DON'T ask sensor size (only one R5, sensor is fixed, no variants)
+  - "PlayStation 5 Digital Edition" → DON'T ask storage (only comes with 825GB, no variants)
+  - "Dyson V15 Detect" → DON'T ask about capacity (specific model, no variants)
+  - "GoPro Hero 12 Black" → DON'T ask about specs (complete model, fixed specs)
+
+  CATEGORY-SPECIFIC GUIDANCE:
+  - Phones/tablets: ALWAYS ask storage (64GB, 128GB, 256GB, etc.) - impacts pricing significantly
+  - Laptops: ALWAYS ask RAM/storage config if not specified - major price factor
+  - TVs: Ask screen size ONLY if not in model name (e.g., "Samsung QLED" → ask size, "Samsung 65-inch QLED" → don't ask)
+  - Cameras: If complete model name (e.g., "Canon EOS R5") → DON'T ask specs (fixed per model)
+  - Binoculars/Scopes: If complete model includes magnification/size (e.g., "HX60L") → DON'T ask
+  - Appliances: If complete model name → DON'T ask capacity (fixed per model)
+  - Watches: If complete model → DON'T ask size (fixed per model)
+
+  RULE OF THUMB:
+  - Generic model ("Samsung TV", "binoculars", "camera") → ASK for specifics
+  - Complete model with numbers/codes ("HX60L", "EOS R5", "V15 Detect") → DON'T ask, model defines everything
 - Physical condition (excellent, good, fair, poor)
 - Specific damage/issues (AFTER asking about condition - see below)
 
@@ -722,6 +743,34 @@ DO NOT write anything except the JSON above. Start your response with { and end 
         field_details = []
         questions_already_asked = set()
 
+        # NEW: Intelligent model analysis - detect if model name is complete/specific
+        model = product_info.get('model', '')
+        brand = product_info.get('brand', '')
+        category = product_info.get('category', '').lower()
+        model_is_complete = False
+        skip_spec_questions = False
+
+        # Check if model contains specific product codes (not phones/laptops/tablets)
+        if model and category not in ['phone', 'laptop', 'tablet', 'smartphone']:
+            # Look for patterns indicating a complete model number
+            import re
+            model_upper = model.upper()
+
+            # Pattern 1: Model codes with letters+numbers (HX60L, R5, V15, A7III, etc.)
+            has_alphanumeric_code = bool(re.search(r'[A-Z]{1,4}\d+[A-Z]*|[A-Z]+\d+|\d+[A-Z]+', model_upper))
+
+            # Pattern 2: Named products with version numbers (Hero 12, Hero12, Mark IV, etc.)
+            has_named_version = bool(re.search(r'(HERO|MARK|GENERATION|GEN)\s*\d+', model_upper))
+
+            # Pattern 3: Specific version keywords with numbers (Pro 12, Max 15, Ultra 60, etc.)
+            has_version_with_number = any(word in model.lower() for word in ['pro', 'max', 'ultra', 'elite', 'advanced', 'plus', 'air']) and bool(re.search(r'\d+', model))
+
+            if has_alphanumeric_code or has_named_version or has_version_with_number:
+                model_is_complete = True
+                skip_spec_questions = True
+                print(f"\n🎯 DETECTED COMPLETE MODEL: '{brand} {model}'")
+                print(f"   → Will SKIP all spec questions and go straight to damage assessment\n")
+
         # Track successfully answered fields
         if product_info.get('damage_details'):
             fields_already_covered.append('damage_details')
@@ -768,8 +817,16 @@ DO NOT write anything except the JSON above. Start your response with { and end 
         # Build warning message
         warning_parts = []
 
+        # Add complete model warning first (most important)
+        if skip_spec_questions:
+            warning_parts.append(f"🎯 COMPLETE MODEL DETECTED: {brand} {model}")
+            warning_parts.append(f"   This model name identifies the EXACT product variant.")
+            warning_parts.append(f"   ALL specifications are FIXED for this model.")
+            warning_parts.append(f"   ❌ DO NOT ask about: size, capacity, magnification, sensor, specs, dimensions")
+            warning_parts.append(f"   ✅ NEXT QUESTION: Go DIRECTLY to damage assessment!")
+
         if fields_already_covered:
-            warning_parts.append(f"✅ FIELDS WITH ANSWERS (do not ask again):")
+            warning_parts.append(f"\n✅ FIELDS WITH ANSWERS (do not ask again):")
             for detail in field_details:
                 warning_parts.append(f"   {detail}")
 
