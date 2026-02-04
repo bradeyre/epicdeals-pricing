@@ -267,7 +267,23 @@ BEFORE ASKING ANY QUESTION - MANDATORY CHECKS:
 ESSENTIAL INFORMATION (ONLY what affects resale value):
 - Item category (phone, laptop, tablet, camera, watch, appliance, console, etc.)
 - Brand name
-- Model/version
+- Model/version - BE SPECIFIC:
+  🔍 INTELLIGENT MODEL SPECIFICITY - Use your knowledge:
+  1. If user gives GENERIC model name that has multiple versions → ASK for specific model
+  2. If user gives COMPLETE model with version → DON'T ask again
+
+  Examples where you SHOULD ask for more specific model:
+  - "Dyson Airwrap" → ASK: "Dyson Airwrap Complete", "Complete Long", "Origin", etc.
+  - "MacBook Pro" → ASK: "13-inch", "14-inch", "16-inch"
+  - "iPad" → ASK: "iPad Pro", "iPad Air", "iPad mini"
+  - "AirPods" → ASK: "AirPods Pro", "AirPods Max", "AirPods 3rd gen"
+  - "GoPro" → ASK: "Hero 11", "Hero 12", "Hero 12 Black"
+
+  Examples where you DON'T need to ask (already specific):
+  - "Dyson Airwrap Complete Long" → Already specific ✓
+  - "MacBook Pro 14-inch M3" → Already specific ✓
+  - "iPad Pro 11-inch" → Already specific ✓
+  - "AirPods Pro 2nd gen" → Already specific ✓
 - AGE/YEAR - CRITICAL for depreciation calculation:
   INTELLIGENT YEAR DETECTION - DON'T ASK UNNECESSARILY:
   1. First, use your knowledge to determine the release year from the model name
@@ -288,6 +304,11 @@ ESSENTIAL INFORMATION (ONLY what affects resale value):
      - The model is truly ambiguous (e.g., "Samsung TV" without model number)
   5. For phones/tablets: Almost NEVER ask year - you know the release date
   6. For laptops: Only ask if model doesn't include year and was produced 2+ years
+  7. HANDLING "I DON'T KNOW" RESPONSES FOR YEAR:
+     - If user says "I don't know", "Not sure", "Unsure" → Extract year as "unknown"
+     - If user says "Possibly 2022", "Around 2023", "Maybe 2021" → Extract the year mentioned
+     - NEVER ask the same question again after user responds (even with uncertain answer)
+     - Move on to next question immediately after ANY year response
 - Key specifications that affect pricing (ONLY ASK IF THEY CREATE PRICE VARIATIONS):
 
   🧠 INTELLIGENT SPEC DETECTION - Use your knowledge to determine:
@@ -448,6 +469,28 @@ User says "Samsung Galaxy S23"
     "completed": false
 }
 
+User says "Dyson Airwrap"
+→ Extract: category=hair styler, brand=Dyson, model=Airwrap
+→ Check: Is "Airwrap" specific enough? NO - Airwrap has multiple versions (Complete, Complete Long, Origin)
+→ Ask for specific model:
+{
+    "question": "Which Dyson Airwrap model do you have?",
+    "field_name": "model",
+    "type": "text",
+    "completed": false
+}
+
+User says "AirPods"
+→ Extract: category=headphones, brand=Apple, model=AirPods
+→ Check: Is "AirPods" specific? NO - there are AirPods Pro, Max, 3rd gen, etc.
+→ Ask which model:
+{
+    "question": "Which AirPods model do you have (Pro, Max, 3rd gen, etc.)?",
+    "field_name": "model",
+    "type": "text",
+    "completed": false
+}
+
 COMPLETE FLOW EXAMPLE FOR IPHONE:
 
 User says "iPhone 14"
@@ -559,14 +602,27 @@ ASK YOURSELF:
 2. Does it have operating system-level account protection?
 3. Is it a smart device with user accounts?
 
-Examples of lockable devices: iPhone, Samsung Galaxy, iPad, MacBook, Dell laptop, Apple Watch, Samsung Galaxy Watch
-Examples of NON-lockable: Rolex watch, Canon camera, binoculars, PS5 console, Samsung TV, mechanical keyboard
+✅ Examples of lockable devices (ASK unlock question):
+   - Phones: iPhone, Samsung Galaxy, Google Pixel, OnePlus
+   - Tablets: iPad, Samsung Galaxy Tab, Microsoft Surface
+   - Laptops: MacBook, Dell, HP, Lenovo (Windows/Mac)
+   - Smart watches: Apple Watch, Samsung Galaxy Watch (with cellular)
+
+❌ Examples of NON-lockable (SKIP unlock question):
+   - Cameras: Canon, Nikon, Sony, GoPro
+   - Appliances: Dyson vacuum, hair straightener, air fryer, microwave
+   - Gaming: PS5, Xbox, Nintendo Switch, gaming headsets
+   - Audio: AirPods, headphones, speakers, soundbars
+   - Accessories: mechanical keyboard, mouse, monitor, TV
+   - Watches: Rolex, Seiko, Casio (non-smart watches)
+   - Binoculars, drones, projectors, printers
 
 Think intelligently - don't use category alone:
-- "Apple Watch" → YES, lockable (smart device with iCloud)
-- "Rolex Submariner" → NO, not lockable (mechanical watch, no accounts)
+- "Apple Watch Series 8" → YES, lockable (smart device with iCloud)
+- "Rolex Submariner" → NO, not lockable (mechanical watch)
+- "Dyson Airwrap" → NO, not lockable (hair tool, no OS, no accounts)
+- "Canon EOS R5" → NO, not lockable (camera, no account system)
 - "iPhone 16" → YES, lockable (has iCloud lock)
-- "Canon EOS camera" → NO, not lockable (no account system)
 
 If the device CAN be locked to accounts (based on intelligence, not lists), ask MULTIPLE verification questions in order:
 
@@ -614,8 +670,12 @@ If answer is "No" or "Not sure" → STOP and return:
 
 If answer is "Yes - Fully unlocked" → Continue to Question 2!
 
-Question 2 - Contract Status (REQUIRED for phones/tablets):
-CRITICAL: You MUST ask this question for smartphones and tablets - do NOT skip it!
+Question 2 - Contract Status (ONLY for phones/tablets - NOT for other devices):
+CRITICAL RULES FOR CONTRACT QUESTIONS:
+✅ ASK contract question for: smartphones, tablets, smart watches with cellular
+❌ NEVER ask contract question for: laptops, cameras, appliances, straighteners, vacuums, binoculars, headphones, speakers, TVs, gaming consoles, etc.
+
+Why: Only mobile devices with cellular plans can have contracts. Other electronics cannot be under contract.
 {
     "question": "Is your [Product] free from any contract or payment plan?",
     "field_name": "contract_free",
@@ -784,6 +844,10 @@ DO NOT write anything except the JSON above. Start your response with { and end 
             fields_already_covered.append('contract_free')
             field_details.append(f"contract_free='{product_info.get('contract_free')}'")
 
+        if product_info.get('year'):
+            fields_already_covered.append('year')
+            field_details.append(f"year='{product_info.get('year')}'")
+
         capacity = product_info.get('specifications', {}).get('capacity')
         if capacity:
             fields_already_covered.append('capacity')
@@ -814,12 +878,33 @@ DO NOT write anything except the JSON above. Start your response with { and end 
                 if any(phrase in question_lower for phrase in ['what condition', 'condition are', 'condition is']):
                     questions_already_asked.add('general_condition')
 
+                if any(phrase in question_lower for phrase in ['what year', 'year was', 'when was', 'when did you purchase', 'when did you buy']):
+                    questions_already_asked.add('year/purchase_date')
+
         # Build warning message
         warning_parts = []
 
-        # Add complete model warning first (most important)
+        # Check if this is a non-lockable device (appliances, cameras, etc.)
+        category_lower = category.lower()
+        is_non_lockable_device = any(keyword in category_lower for keyword in [
+            'camera', 'binocular', 'vacuum', 'straightener', 'hair', 'appliance',
+            'console', 'gaming', 'headphone', 'speaker', 'keyboard', 'mouse',
+            'monitor', 'tv', 'television', 'projector', 'printer', 'drone'
+        ]) or any(keyword in brand.lower() for keyword in [
+            'dyson', 'gopro', 'canon', 'nikon', 'sony alpha', 'playstation', 'xbox'
+        ])
+
+        # Add non-lockable device warning (most important)
+        if is_non_lockable_device:
+            warning_parts.append(f"⚠️  NON-LOCKABLE DEVICE: {category} - {brand} {model}")
+            warning_parts.append(f"   This device has NO account lock (no iCloud, Google, Microsoft, etc.)")
+            warning_parts.append(f"   ❌ DO NOT ask about: device unlock, account status")
+            warning_parts.append(f"   ❌ DO NOT ask about: contract, payment plan")
+            warning_parts.append(f"   ✅ ONLY ask: damage assessment, then mark COMPLETED!")
+
+        # Add complete model warning
         if skip_spec_questions:
-            warning_parts.append(f"🎯 COMPLETE MODEL DETECTED: {brand} {model}")
+            warning_parts.append(f"\n🎯 COMPLETE MODEL DETECTED: {brand} {model}")
             warning_parts.append(f"   This model name identifies the EXACT product variant.")
             warning_parts.append(f"   ALL specifications are FIXED for this model.")
             warning_parts.append(f"   ❌ DO NOT ask about: size, capacity, magnification, sensor, specs, dimensions")
