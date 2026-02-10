@@ -627,31 +627,34 @@ class EpicDealsApp {
                     <p class="breakdown-source">Market value based on current used listings from PriceCheck, Bob Shop, and Gumtree (Feb 2026). Repair estimates from iStore, iFix, and local SA repair shops.</p>
                 </div>
 
-                <button class="offer-card" id="card-sell-now" onclick="app.selectOfferCard('sell_now')">
-                    <div class="offer-card-content">
-                        <div>
-                            <p class="offer-card-title">Sell Now</p>
-                            <p class="offer-card-subtitle">Paid within 3 working days. We collect via courier.</p>
+                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px;">Choose an option</p>
+                <div class="offer-cards-group">
+                    <button class="offer-card" id="card-sell-now" onclick="app.selectOfferCard('sell_now')">
+                        <div class="offer-card-content">
+                            <div>
+                                <p class="offer-card-title">Sell Now</p>
+                                <p class="offer-card-subtitle">Paid within 3 working days. We collect via courier.</p>
+                            </div>
+                            <div class="offer-card-price-section">
+                                <div class="offer-card-price">R${this.fmt(sellNow)}</div>
+                            </div>
                         </div>
-                        <div class="offer-card-price-section">
-                            <div class="offer-card-price">R${this.fmt(sellNow)}</div>
-                        </div>
-                    </div>
-                </button>
+                    </button>
 
-                <button class="offer-card" id="card-consignment" onclick="app.selectOfferCard('consignment')">
-                    <div class="offer-card-badge">RECOMMENDED</div>
-                    <div class="offer-card-content">
-                        <div>
-                            <p class="offer-card-title">Consignment</p>
-                            <p class="offer-card-subtitle">We sell for you. Paid 2 days after buyer receives.</p>
+                    <button class="offer-card" id="card-consignment" onclick="app.selectOfferCard('consignment')">
+                        <div class="offer-card-badge">RECOMMENDED</div>
+                        <div class="offer-card-content">
+                            <div>
+                                <p class="offer-card-title">Consignment</p>
+                                <p class="offer-card-subtitle">We sell for you. Paid 2 days after buyer receives.</p>
+                            </div>
+                            <div class="offer-card-price-section">
+                                <div class="offer-card-price">R${this.fmt(consignment)}</div>
+                                <p class="offer-card-savings">Get R${this.fmt(extra)} more</p>
+                            </div>
                         </div>
-                        <div class="offer-card-price-section">
-                            <div class="offer-card-price">R${this.fmt(consignment)}</div>
-                            <p class="offer-card-savings">Get R${this.fmt(extra)} more</p>
-                        </div>
-                    </div>
-                </button>
+                    </button>
+                </div>
 
                 ${this.isImeiDevice ? `
                 <div class="imei-offer-warning">
@@ -946,7 +949,7 @@ class EpicDealsApp {
             position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
             background: var(--danger); color: white; padding: 12px 24px;
             border-radius: 10px; font-size: 14px; font-weight: 600;
-            z-index: 1000; animation: fadeIn 0.3s ease;
+            z-index: 1000; animation: toastFadeIn 0.3s ease;
         `;
         toast.textContent = message;
         document.body.appendChild(toast);

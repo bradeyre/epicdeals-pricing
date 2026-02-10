@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.7"
+SESSION_VERSION = "v3.1.8"
 
 
 @app.before_request
