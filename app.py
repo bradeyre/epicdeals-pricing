@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.5"
+SESSION_VERSION = "v3.1.6"
 
 
 @app.before_request
@@ -369,6 +369,66 @@ def message_v3():
         # PHASE 2: Answering Questions
         else:
             print("📋 Phase 2: Processing answer...")
+
+            # SAFETY: Detect stale sessions where product was identified in a
+            # PREVIOUS conversation but the user is starting fresh.
+            # If question_count == 0 and no questions have been asked yet, the
+            # engine state is stale. Reset and treat as Phase 1.
+            if engine.question_count == 0 and not session.get('current_field_v3'):
+                print("⚠️  STALE SESSION DETECTED: product_identified=True but no questions asked")
+                print("   Resetting engine and treating as Phase 1...")
+                engine = GuardrailEngine()
+                session.pop('engine_v3', None)
+                session.pop('current_field_v3', None)
+
+                # Re-run Phase 1 with the new engine
+                identification = ai_service_v3.identify_product(user_message)
+                engine.set_product_info(identification['product_info'])
+                approved_questions = engine.approve_questions(identification['proposed_questions'])
+
+                print(f"\n🔑 PHASE 1 (RECOVERED) DECISION POINT:")
+                print(f"   approved_questions: {approved_questions}")
+
+                if not approved_questions:
+                    session['engine_v3'] = engine.to_dict()
+                    session['product_info_v3'] = identification['product_info']
+                    session['product_info'] = identification['product_info']
+                    session['product_info']['collected_fields'] = engine.collected_fields
+                    return jsonify({
+                        'success': True,
+                        'should_calculate': True,
+                        'message': "Got it! Calculating your offer now..."
+                    })
+
+                acknowledgment = ai_service_v3.generate_acknowledgment(identification['product_info'])
+                first_field = approved_questions[0]
+                question_data = ai_service_v3.generate_question(
+                    first_field, identification['product_info'], engine.collected_fields
+                )
+                validation = engine.validate_ai_question(
+                    first_field, question_data['question_text'],
+                    question_data.get('quick_options', [])
+                )
+                if not validation['valid']:
+                    print(f"⚠️  Recovered question validation failed: {validation['reason']}")
+                    return jsonify({'success': False, 'error': 'Internal error'}), 500
+
+                full_response = f"{acknowledgment}\n\n{question_data['question_text']}"
+                engine.record_ai_message(full_response)
+                session['engine_v3'] = engine.to_dict()
+                session['current_field_v3'] = first_field
+
+                return jsonify({
+                    'success': True,
+                    'message': acknowledgment,
+                    'question': question_data['question_text'],
+                    'field_name': first_field,
+                    'ui_type': question_data.get('ui_type', 'text'),
+                    'quick_options': question_data.get('quick_options', []),
+                    'progress': engine.get_progress_info(),
+                    'should_calculate': False,
+                    'imei_warning': engine.imei_device
+                })
 
             # Get current question context from last AI message
             last_question_field = session.get('current_field_v3', '')

@@ -69,8 +69,17 @@ class EpicDealsApp {
         document.getElementById('customer-form').classList.add('hidden');
     }
 
-    startChat() {
+    async startChat() {
         this.showScreen('chat-screen');
+
+        // Always reset server session on new chat to prevent stale state
+        try {
+            await fetch('/api/reset-session', { method: 'POST' });
+            console.log('Session reset for fresh start');
+        } catch (e) {
+            console.warn('Session reset failed:', e);
+        }
+
         this.addMessage("Hey! What are you looking to sell today?", 'bot');
         this.showTextInput();
     }
