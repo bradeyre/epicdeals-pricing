@@ -31,15 +31,59 @@ class GuardrailEngine:
     Key Responsibilities:
     - Track what's been asked and answered
     - Validate AI responses (reject duplicates)
-    - Enforce 4-question cap
+    - Enforce category-specific question caps
     - Decide when to calculate offer
     - Provide UI options for frontend
     """
+
+    # Category normalization map - maps AI's raw categories to super-categories
+    CATEGORY_MAP = {
+        'electronics': [
+            'phone', 'smartphone', 'iphone', 'android', 'samsung', 'mobile', 'cellphone',
+            'tablet', 'ipad', 'laptop', 'macbook', 'computer', 'notebook',
+            'camera', 'dslr', 'mirrorless', 'lens',
+            'console', 'playstation', 'xbox', 'nintendo', 'switch',
+            'tv', 'television', 'monitor',
+            'smartwatch', 'watch', 'apple watch',
+            'earbuds', 'headphones', 'speaker', 'airpods', 'beats',
+            'drone', 'gopro'
+        ],
+        'vehicle': [
+            'car', 'vehicle', 'motorcycle', 'motorbike', 'scooter',
+            'bakkie', 'truck', 'suv', 'sedan', 'hatchback'
+        ],
+        'appliance': [
+            'appliance', 'vacuum', 'dyson', 'hairdryer', 'straightener', 'ghd',
+            'airwrap', 'kitchen', 'mixer', 'blender', 'microwave',
+            'fridge', 'refrigerator', 'washing machine', 'dishwasher', 'dryer', 'oven'
+        ],
+        'fashion': [
+            'shoes', 'sneakers', 'nike', 'adidas', 'jordan', 'puma',
+            'bag', 'handbag', 'purse', 'backpack',
+            'clothing', 'jacket', 'dress', 'shirt'
+        ],
+        'furniture': [
+            'furniture', 'couch', 'sofa', 'table', 'chair',
+            'desk', 'bed', 'mattress', 'shelf', 'cabinet', 'drawer'
+        ],
+    }
+
+    # Super-category to question limit mapping
+    CATEGORY_LIMITS = {
+        'electronics': 4,    # Storage, condition, unlock, contract
+        'vehicle': 6,        # Mileage, year, service, accident, condition, features
+        'appliance': 3,      # Age, condition, completeness
+        'fashion': 3,        # Size, condition, authenticity
+        'furniture': 2,      # Age, condition
+    }
+
+    DEFAULT_QUESTION_LIMIT = 4  # Fallback for unknown categories
 
     def __init__(self):
         # Product identification
         self.product_identified: bool = False
         self.product_info: Dict[str, Any] = {}
+        self.question_limit: int = self.DEFAULT_QUESTION_LIMIT  # Dynamic limit based on category
 
         # Question tracking
         self.approved_questions: List[str] = []  # Questions AI proposed and we approved
@@ -68,28 +112,72 @@ class GuardrailEngine:
             'content': message
         })
 
+    def _normalise_category(self, raw_category: str) -> str:
+        """
+        Normalise AI's raw category string to a super-category.
+        Uses fuzzy keyword matching to handle variations.
+
+        Args:
+            raw_category: Category string from AI (e.g., 'smartphone', 'Samsung Galaxy', 'car')
+
+        Returns:
+            Super-category string ('electronics', 'vehicle', etc.) or 'general'
+        """
+        if not raw_category:
+            return 'general'
+
+        lower = raw_category.lower().strip()
+
+        # Check each super-category's keywords
+        for super_cat, keywords in self.CATEGORY_MAP.items():
+            # Exact match or fuzzy keyword match
+            if lower in keywords or any(kw in lower for kw in keywords):
+                return super_cat
+
+        return 'general'
+
     def set_product_info(self, product_info: Dict[str, Any]) -> None:
         """
         Set the identified product information.
-        This is called after the AI extracts product details from the initial message.
+        ENHANCED: Flattens ALL nested specs, auto-collects everything meaningful.
+
+        Args:
+            product_info: Product data from AI with possible nested 'specs' dict
         """
+        # Flatten ALL nested specs to top level (v3.1 corrected approach)
+        specs = product_info.pop('specs', {})
+        if isinstance(specs, dict):
+            for key, value in specs.items():
+                # Only promote if value is meaningful
+                if value and str(value).strip():
+                    # Filter out placeholder/junk values
+                    value_str = str(value).lower()
+                    if value_str not in ('unknown', 'not specified', 'if mentioned', 'n/a', 'none'):
+                        # Don't overwrite explicit top-level values
+                        if key not in product_info or not product_info[key]:
+                            product_info[key] = value
+
+        # Auto-collect EVERY field that has a meaningful value
+        # (except metadata fields like name, brand, category)
+        metadata_fields = {'name', 'brand', 'category', 'model'}
+        for key, value in product_info.items():
+            if key not in metadata_fields and value and str(value).strip():
+                value_str = str(value).lower()
+                if value_str not in ('unknown', 'not specified', 'if mentioned', 'n/a'):
+                    self.collected_fields[key] = value
+                    self.asked_fields.add(key)
+
         self.product_info = product_info
         self.product_identified = True
 
-        # Auto-collect any specs that came with the initial message
-        if 'storage' in product_info:
-            self.collected_fields['storage'] = product_info['storage']
-            self.asked_fields.add('storage')
-
-        if 'year' in product_info and product_info['year'] != 'unknown':
-            self.collected_fields['year'] = product_info['year']
-            self.asked_fields.add('year')
-
-        if 'size' in product_info:
-            self.collected_fields['size'] = product_info['size']
-            self.asked_fields.add('size')
+        # Normalise category and set question limit
+        raw_category = product_info.get('category', 'general')
+        normalised_category = self._normalise_category(raw_category)
+        self.question_limit = self.CATEGORY_LIMITS.get(normalised_category, self.DEFAULT_QUESTION_LIMIT)
 
         print(f"\n🎯 PRODUCT IDENTIFIED: {product_info.get('brand', '')} {product_info.get('model', '')}")
+        print(f"   Category: {raw_category} → {normalised_category}")
+        print(f"   Question limit: {self.question_limit}")
         print(f"   Auto-collected fields: {list(self.collected_fields.keys())}")
 
     def approve_questions(self, proposed_questions: List[str]) -> List[str]:
@@ -112,8 +200,8 @@ class GuardrailEngine:
                 continue
 
             # Would exceed cap? Stop approving
-            if len(approved) + self.question_count >= 4:
-                print(f"   🛑 Reached 4-question cap, stopping approvals")
+            if len(approved) + self.question_count >= self.question_limit:
+                print(f"   🛑 Reached {self.question_limit}-question cap, stopping approvals")
                 break
 
             approved.append(field)
@@ -146,11 +234,11 @@ class GuardrailEngine:
                 'reason': f"Field '{question_field}' already collected"
             }
 
-        # Rule 2: MAX 4 QUESTIONS
-        if self.question_count >= 4:
+        # Rule 2: MAX QUESTIONS (category-specific)
+        if self.question_count >= self.question_limit:
             return {
                 'valid': False,
-                'reason': 'Maximum 4 questions reached'
+                'reason': f'Maximum {self.question_limit} questions reached'
             }
 
         # Valid! Record it
@@ -182,6 +270,7 @@ class GuardrailEngine:
         - Direct answers ("128GB", "Screen cracked")
         - Uncertain answers ("I don't know" -> marks as 'unknown')
         - Multiple values (checkboxes -> list)
+        - "No damage" normalization (v3.1 Fix 4)
         """
         # Handle uncertain answers
         if isinstance(value, str):
@@ -189,6 +278,17 @@ class GuardrailEngine:
             if any(phrase in value.lower() for phrase in uncertain_phrases):
                 value = 'unknown'
                 print(f"   ⚠️  Uncertain answer for '{field_name}' - marking as 'unknown'")
+
+        # Normalise 'no damage' answers (v3.1 Fix 4)
+        # If user selects "✅ No issues" from checklist, record as 'no_damage' not the emoji string
+        if field_name in ('condition', 'damage', 'damage_details') and isinstance(value, list):
+            no_damage_indicators = [
+                v for v in value
+                if any(phrase in v.lower() for phrase in ['no issue', 'no damage', 'none', 'like new', '✅'])
+            ]
+            if no_damage_indicators:
+                value = 'no_damage'
+                print(f"   ✅ Normalized 'no damage' selection to 'no_damage'")
 
         self.collected_fields[field_name] = value
         self.asked_fields.add(field_name)  # Mark as both asked AND answered
@@ -201,13 +301,13 @@ class GuardrailEngine:
         Decide if we have enough information to calculate an offer.
 
         Returns True if:
-        - Question cap reached (4 questions)
+        - Question cap reached (category-specific)
         - All approved questions answered
         - Minimum required fields collected (product + condition)
         """
         # Hit the cap? Always calculate
-        if self.question_count >= 4:
-            print(f"\n   🎯 TRIGGER CALCULATION: Question cap reached (4/4)")
+        if self.question_count >= self.question_limit:
+            print(f"\n   🎯 TRIGGER CALCULATION: Question cap reached ({self.question_count}/{self.question_limit})")
             return True
 
         # All approved questions answered?
@@ -244,15 +344,16 @@ class GuardrailEngine:
                 if field not in self.collected_fields:
                     state.append(f"  ⏭️  {field} (user was unsure)")
 
-        state.append(f"\nQUESTIONS USED: {self.question_count}/4")
+        state.append(f"\nQUESTIONS USED: {self.question_count}/{self.question_limit}")
 
         return "\n".join(state)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize to dict for Flask session storage"""
+        """Serialize to dict for Flask session storage (v3.1 Fix 5)"""
         return {
             'product_identified': self.product_identified,
             'product_info': self.product_info,
+            'question_limit': self.question_limit,  # NEW: Include dynamic limit
             'approved_questions': self.approved_questions,
             'collected_fields': self.collected_fields,
             'asked_fields': list(self.asked_fields),  # Convert set to list for JSON
@@ -264,10 +365,11 @@ class GuardrailEngine:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'GuardrailEngine':
-        """Deserialize from dict (Flask session)"""
+        """Deserialize from dict (Flask session) (v3.1 Fix 5)"""
         engine = cls()
         engine.product_identified = data.get('product_identified', False)
         engine.product_info = data.get('product_info', {})
+        engine.question_limit = data.get('question_limit', cls.DEFAULT_QUESTION_LIMIT)  # NEW: Restore limit
         engine.approved_questions = data.get('approved_questions', [])
         engine.collected_fields = data.get('collected_fields', {})
         engine.asked_fields = set(data.get('asked_fields', []))  # Convert list back to set
@@ -279,11 +381,11 @@ class GuardrailEngine:
 
     def get_progress_info(self) -> Dict[str, Any]:
         """Get progress information for frontend display"""
-        total_questions = min(len(self.approved_questions), 4)
+        total_questions = min(len(self.approved_questions), self.question_limit)
         return {
             'current': self.question_count,
-            'total': total_questions if total_questions > 0 else 4,
-            'percentage': int((self.question_count / 4) * 100) if self.question_count > 0 else 0
+            'total': total_questions if total_questions > 0 else self.question_limit,
+            'percentage': int((self.question_count / self.question_limit) * 100) if self.question_count > 0 else 0
         }
 
     def reset(self) -> None:
