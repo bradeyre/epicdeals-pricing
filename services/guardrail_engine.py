@@ -187,21 +187,33 @@ class GuardrailEngine:
         """
         Review AI's proposed questions and approve only valid ones.
 
-        Removes:
-        - Questions about fields already asked
-        - Questions about fields already collected (EXCEPT mandatory fields like condition)
-        - Questions beyond the category-specific question cap
+        Rules:
+        - Condition/damage is ALWAYS asked FIRST (mandatory, highest priority)
+        - Skip fields already collected from user input (auto-extracted specs)
+        - Respect the category-specific question cap
 
         Returns: List of approved question field names
         """
         approved = []
 
-        # Ensure condition is always asked if not already in the proposed list
-        has_condition = any(f in self.MANDATORY_QUESTION_FIELDS for f in proposed_questions)
-        if not has_condition:
-            proposed_questions = list(proposed_questions) + ['condition']
+        # STEP 1: Separate mandatory fields (condition) from optional ones
+        mandatory = []
+        optional = []
 
         for field in proposed_questions:
+            if field in self.MANDATORY_QUESTION_FIELDS:
+                mandatory.append(field)
+            else:
+                optional.append(field)
+
+        # Ensure condition is always included — inject if AI didn't propose it
+        if not mandatory:
+            mandatory = ['condition']
+
+        # STEP 2: Build final ordered list — mandatory FIRST, then optional
+        ordered = mandatory + optional
+
+        for field in ordered:
             # Already asked by the USER? Skip (not just auto-collected)
             if field in self.asked_fields and field not in self.MANDATORY_QUESTION_FIELDS:
                 print(f"   ⏭️  Skipping '{field}' - already asked/answered")
