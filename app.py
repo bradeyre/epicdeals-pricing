@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.9"
+SESSION_VERSION = "v3.1.10"
 
 
 def _log_session_size(label=""):
@@ -359,6 +359,36 @@ def message_v3():
             # AI identifies the product and proposes questions
             identification = ai_service_v3.identify_product(user_message)
 
+            # Check if model confirmation is needed BEFORE setting product info
+            needs_confirmation = identification.get('needs_model_confirmation', False)
+            model_options = identification.get('model_options', [])
+
+            if needs_confirmation and model_options and len(model_options) > 1:
+                print(f"🔍 Model ambiguous — asking user to confirm from: {model_options}")
+
+                # Don't fully set product info yet — store partial state
+                # and ask model confirmation as a special question
+                product_name = f"{identification['product_info'].get('brand', '')} {identification['product_info'].get('name', '')}".strip()
+                session['engine_v3'] = engine.to_dict()
+                session['current_field_v3'] = '_model_confirmation'
+                # Only store the essentials — keep cookie small
+                session['pending_identification'] = {
+                    'product_info': identification['product_info'],
+                    'proposed_questions': identification['proposed_questions']
+                }
+                _log_session_size("after model confirmation prompt")
+
+                return jsonify({
+                    'success': True,
+                    'message': f"I want to make sure I get the right price for you!",
+                    'question': f"Which exact model is your {identification['product_info'].get('brand', 'item')}?",
+                    'field_name': '_model_confirmation',
+                    'ui_type': 'quick_select',
+                    'quick_options': model_options[:6],  # Limit to 6 options
+                    'progress': {'current': 0, 'total': 3, 'percentage': 0},
+                    'should_calculate': False
+                })
+
             # Set product info in engine
             engine.set_product_info(identification['product_info'])
 
@@ -498,8 +528,66 @@ def message_v3():
                     'imei_warning': engine.imei_device
                 })
 
-            # Get current question context from last AI message
+            # Handle model confirmation response
             last_question_field = session.get('current_field_v3', '')
+
+            if last_question_field == '_model_confirmation':
+                print(f"📋 Processing model confirmation: {user_message}")
+                pending = session.pop('pending_identification', None)
+                if pending:
+                    # Update the product info with the user's confirmed model
+                    confirmed_model = user_message.strip()
+                    pending['product_info']['model'] = confirmed_model
+                    pending['product_info']['name'] = confirmed_model
+
+                    # Now run the normal Phase 1 flow with corrected product info
+                    engine.set_product_info(pending['product_info'])
+                    approved_questions = engine.approve_questions(pending['proposed_questions'])
+
+                    if not approved_questions:
+                        session['engine_v3'] = engine.to_dict()
+                        session['product_info'] = _normalize_v3_product_info(
+                            pending['product_info'], engine.collected_fields
+                        )
+                        return jsonify({
+                            'success': True,
+                            'should_calculate': True,
+                            'message': f"Got it, {confirmed_model}! Calculating your offer now..."
+                        })
+
+                    acknowledgment = ai_service_v3.generate_acknowledgment(pending['product_info'])
+                    first_field = approved_questions[0]
+                    question_data = ai_service_v3.generate_question(
+                        first_field, pending['product_info'], engine.collected_fields
+                    )
+                    validation = engine.validate_ai_question(
+                        first_field, question_data['question_text'],
+                        question_data.get('quick_options', [])
+                    )
+                    if not validation['valid']:
+                        return jsonify({'success': False, 'error': 'Internal error'}), 500
+
+                    session['engine_v3'] = engine.to_dict()
+                    session['current_field_v3'] = first_field
+                    _log_session_size("after model confirmation")
+
+                    return jsonify({
+                        'success': True,
+                        'message': acknowledgment,
+                        'question': question_data['question_text'],
+                        'field_name': first_field,
+                        'ui_type': question_data.get('ui_type', 'text'),
+                        'quick_options': question_data.get('quick_options', []),
+                        'progress': engine.get_progress_info(),
+                        'should_calculate': False,
+                        'imei_warning': engine.imei_device
+                    })
+                else:
+                    # No pending identification — treat as fresh start
+                    return jsonify({
+                        'success': False,
+                        'error': 'Session lost. Please start over.'
+                    }), 400
 
             if not last_question_field:
                 return jsonify({

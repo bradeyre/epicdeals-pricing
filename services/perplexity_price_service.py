@@ -53,7 +53,7 @@ class PerplexityPriceService:
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a South African second-hand market price expert. Search for current prices and return ONLY a JSON object with this exact format: {\"prices\": [price1, price2, ...], \"sources\": [\"source1\", \"source2\", ...]}. Prices must be in ZAR (South African Rand). Only include reliable sources like epicdeals.co.za, bobshop.co.za, gumtree.co.za, takealot.com, carbonite.co.za."
+                            "content": "You are a South African SECOND-HAND market price expert. Search for current USED/SECOND-HAND prices ONLY and return ONLY a JSON object with this exact format: {\"prices\": [price1, price2, ...], \"sources\": [\"source1\", \"source2\", ...]}. Prices must be in ZAR (South African Rand). CRITICAL: Only include SECOND-HAND/USED prices from classifieds and resale sites like gumtree.co.za, facebook marketplace, carbonite.co.za, bobshop.co.za. Do NOT include new retail prices from takealot.com, incredible.co.za, makro.co.za or any other new-product retailer. We need what people are actually selling used items for, not what they cost new."
                         },
                         {
                             "role": "user",
@@ -266,7 +266,7 @@ class PerplexityPriceService:
         storage = product_info.get('storage', '')
         category = product_info.get('category', '')
 
-        query = f"Find current second-hand prices in South Africa for {brand} {model}"
+        query = f"Find current SECOND-HAND / USED prices in South Africa for {brand} {model}"
 
         if storage:
             query += f" {storage}"
@@ -276,7 +276,7 @@ class PerplexityPriceService:
         elif condition and 'excellent' in condition.lower():
             query += " in excellent condition"
 
-        query += ". Search epicdeals.co.za, bobshop.co.za, gumtree.co.za, takealot.com, carbonite.co.za. Return actual prices in ZAR."
+        query += ". Search gumtree.co.za, facebook marketplace, carbonite.co.za, bobshop.co.za for USED listings only. Do NOT include new retail prices from takealot or other retailers. Return actual second-hand asking prices in ZAR."
 
         return query
 
@@ -312,11 +312,21 @@ class PerplexityPriceService:
         return prices[:10], sources[:5]  # Limit results
 
     def _calculate_market_value(self, prices: List[float]) -> float:
-        """Calculate median market value from prices"""
+        """Calculate median market value from prices, filtering outliers"""
         if not prices:
             return None
 
         sorted_prices = sorted(prices)
+
+        # If we have enough data points, remove extreme outliers
+        if len(sorted_prices) >= 3:
+            median = sorted_prices[len(sorted_prices) // 2]
+            # Remove prices that are more than 2x or less than 0.3x the median
+            # This helps filter out accidentally-included new retail prices
+            filtered = [p for p in sorted_prices if 0.3 * median <= p <= 2.0 * median]
+            if filtered:
+                sorted_prices = sorted(filtered)
+
         n = len(sorted_prices)
 
         if n % 2 == 0:

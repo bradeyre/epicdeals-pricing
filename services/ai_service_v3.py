@@ -69,12 +69,23 @@ IMPORTANT:
 - Condition/damage is almost always relevant
 - Keep it to 1-4 questions max
 
+MODEL CONFIRMATION:
+If the user's description is AMBIGUOUS about the exact model or variant, set "needs_model_confirmation" to true and provide a list of likely models in "model_options". Examples of when this is needed:
+- "Sony headphones" → could be WH-1000XM3, XM4, or XM5 (very different prices)
+- "MacBook" → could be Air or Pro, M1/M2/M3
+- "Samsung Galaxy" → could be S23, S24, A series, etc.
+- "iPhone" without a number → which generation?
+- "VW Polo" → which year/engine variant?
+- "Nike Dunks" → which colorway?
+
+When the user IS specific enough (e.g. "iPhone 16 Pro 256GB", "Sony WH-1000XM4"), set "needs_model_confirmation" to false.
+
 Respond with ONLY this JSON:
 {{
   "product_info": {{
     "name": "Full product name",
     "brand": "Brand name",
-    "model": "Model/version",
+    "model": "Model/version (your best guess if ambiguous)",
     "category": "phone|laptop|vehicle|shoes|appliance|furniture|etc",
     "specs": {{
       "storage": "if mentioned",
@@ -83,7 +94,9 @@ Respond with ONLY this JSON:
       "color": "if mentioned"
     }}
   }},
-  "proposed_questions": ["field1", "field2", "field3"]
+  "proposed_questions": ["field1", "field2", "field3"],
+  "needs_model_confirmation": false,
+  "model_options": ["Model A", "Model B", "Model C"]
 }}
 
 Be smart about years: iPhone 16 = 2024, iPhone 15 = 2023, PS5 = 2020, etc.
@@ -165,6 +178,18 @@ Examples:
 - Other phone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery issues", "Water damage", "None - excellent condition ✅"]
 - Car condition: ["Body dents", "Engine warning", "Tyres worn", "None ✔"]
 - Shoes condition: ["Sole worn", "Scuffs/stains", "Box missing", "None ✔"]
+
+For DAMAGE_SEVERITY questions (follow-up after user reported damage):
+- The user already told us WHAT damage exists (see "Already collected" above for their condition answer)
+- Now ask HOW BAD it is for EACH reported issue
+- Be specific to the damage they reported. Examples:
+  - If "Screen cracked/scratched": ask "How would you describe the screen damage?" with options like ["Hairline scratches only", "Deep scratches (can feel with fingernail)", "Cracked but display works", "Cracked and display has issues"]
+  - If "Back glass cracked": ["Small chip/crack", "Spider-web cracks", "Shattered"]
+  - If "Dents": ["Small barely visible dents", "Noticeable dents", "Large dents affecting function"]
+  - If "Sole worn": ["Light wear, plenty of life left", "Moderate wear, some tread left", "Heavy wear, needs resoling"]
+- Use ui_type "quick_select" (NOT checklist - they pick the ONE that best describes it)
+- If multiple damage items were reported, ask about the MOST significant one and include "Also describe: [other items]" as a text prompt
+- Keep it friendly: "Just so we can factor this in accurately..."
 
 For BATTERY_HEALTH questions (iPhones only):
 - Ask what their iPhone battery health percentage is (Settings > Battery > Battery Health)

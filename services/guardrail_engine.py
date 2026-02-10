@@ -350,6 +350,13 @@ class GuardrailEngine:
             'ui_options': self.ui_options
         }
 
+    # Damage keywords that indicate real damage was reported (not "no damage")
+    DAMAGE_KEYWORDS = [
+        'crack', 'scratch', 'dent', 'water', 'broken', 'chip', 'damage',
+        'battery', 'dead', 'bent', 'burn', 'stain', 'tear', 'worn', 'fad',
+        'lens', 'port', 'button', 'overheat', 'screen', 'glass', 'speaker'
+    ]
+
     def record_answer(self, field_name: str, value: Any) -> None:
         """
         Record the user's answer to a question.
@@ -359,6 +366,7 @@ class GuardrailEngine:
         - Uncertain answers ("I don't know" -> marks as 'unknown')
         - Multiple values (checkboxes -> list)
         - "No damage" normalization (v3.1 Fix 4)
+        - Damage severity follow-up injection (v3.1.9)
         """
         # Handle uncertain answers
         if isinstance(value, str):
@@ -381,8 +389,49 @@ class GuardrailEngine:
         self.collected_fields[field_name] = value
         self.asked_fields.add(field_name)  # Mark as both asked AND answered
 
+        # v3.1.9: If user reported actual damage, inject a severity follow-up
+        if field_name in ('condition', 'damage', 'damage_details'):
+            self._maybe_inject_severity_followup(value)
+
         print(f"   ✅ Recorded: {field_name} = {value}")
         print(f"   📦 Collected fields: {len(self.collected_fields)}/{self.question_count}")
+
+    def _maybe_inject_severity_followup(self, condition_value: Any) -> None:
+        """
+        If user reported damage, inject a damage_severity question into approved_questions
+        so the next question asks about severity (e.g. light scratch vs deep crack).
+
+        Only injects if:
+        - Actual damage was reported (not 'no_damage' or 'unknown')
+        - damage_severity hasn't already been asked
+        - We haven't hit the question cap
+        """
+        if condition_value in ('no_damage', 'unknown', None):
+            return
+
+        # Check if the answer contains actual damage keywords
+        value_str = str(condition_value).lower()
+        has_real_damage = any(kw in value_str for kw in self.DAMAGE_KEYWORDS)
+
+        if not has_real_damage:
+            return
+
+        if 'damage_severity' in self.asked_fields or 'damage_severity' in self.collected_fields:
+            return
+
+        if self.question_count >= self.question_limit:
+            return
+
+        # Inject damage_severity as the NEXT question (right after condition)
+        if 'damage_severity' not in self.approved_questions:
+            # Insert right after the current position in approved_questions
+            # Find where condition-type questions are and insert after
+            insert_idx = 0
+            for i, field in enumerate(self.approved_questions):
+                if field in self.MANDATORY_QUESTION_FIELDS:
+                    insert_idx = i + 1
+            self.approved_questions.insert(insert_idx, 'damage_severity')
+            print(f"   🔍 Injected damage_severity follow-up (reported: {value_str[:60]})")
 
     def should_calculate_offer(self) -> bool:
         """
