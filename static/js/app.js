@@ -203,10 +203,9 @@ class EpicDealsApp {
             this.addMessage(data.message, 'bot');
         }
 
-        // Show IMEI / account lock warning for phones, tablets, smartwatches
+        // Track IMEI device status (warning shown on offer screen, not in chat)
         if (data.imei_warning) {
             this.isImeiDevice = true;
-            this.showImeiNotice();
         }
 
         // Update progress
@@ -591,16 +590,23 @@ class EpicDealsApp {
                     </div>
                 </button>
 
+                ${this.isImeiDevice ? `
+                <div class="imei-offer-warning">
+                    <div class="imei-offer-warning-text">
+                        <strong>🔒 Account Lock Policy</strong><br>
+                        This device must arrive without an iCloud, Google, or Samsung account lock.
+                        If locked on arrival: <strong>R550 remote unlock fee</strong> (with your assistance) or <strong>R550 return shipping</strong>.
+                    </div>
+                    <label class="imei-acknowledge-label" id="imei-ack-label">
+                        <input type="checkbox" id="imei-acknowledge" onchange="app.onImeiAcknowledge()">
+                        <span>I acknowledge the account lock policy</span>
+                    </label>
+                </div>
+                ` : ''}
+
                 <button class="accept-button" id="accept-offer-btn" style="display:none;" onclick="app.acceptOffer()">Accept Offer &rarr;</button>
 
                 <button class="secondary-button" id="too-low-btn" onclick="app.showPriceDispute()">Offer too low? Tell us why</button>
-
-                ${this.isImeiDevice ? `
-                <div class="imei-offer-warning">
-                    <strong>🔒 Account Lock Policy:</strong> This device must arrive without an iCloud, Google, or Samsung account lock.
-                    If locked on arrival: <strong>R550 remote unlock fee</strong> (with your assistance) or <strong>R550 return shipping</strong>.
-                </div>
-                ` : ''}
 
                 <p style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 16px;">
                     All offers require manual verification. We'll confirm within 2 working days.
@@ -640,8 +646,36 @@ class EpicDealsApp {
 
         this.selectedOfferType = type;
 
-        // Show accept button
-        document.getElementById('accept-offer-btn').style.display = 'block';
+        // Show accept button only if IMEI acknowledged (or not an IMEI device)
+        this.updateAcceptButton();
+    }
+
+    onImeiAcknowledge() {
+        // Called when the IMEI acknowledgment checkbox changes
+        this.updateAcceptButton();
+    }
+
+    updateAcceptButton() {
+        const acceptBtn = document.getElementById('accept-offer-btn');
+        if (!acceptBtn) return;
+
+        const hasSelectedCard = this.selectedOfferType;
+        const imeiCheckbox = document.getElementById('imei-acknowledge');
+        const imeiAcknowledged = !this.isImeiDevice || (imeiCheckbox && imeiCheckbox.checked);
+
+        if (hasSelectedCard && imeiAcknowledged) {
+            acceptBtn.style.display = 'block';
+        } else if (hasSelectedCard && !imeiAcknowledged) {
+            // Card selected but IMEI not acknowledged — hide accept, highlight checkbox
+            acceptBtn.style.display = 'none';
+            const label = document.getElementById('imei-ack-label');
+            if (label) {
+                label.classList.add('highlight');
+                setTimeout(() => label.classList.remove('highlight'), 1500);
+            }
+        } else {
+            acceptBtn.style.display = 'none';
+        }
     }
 
     acceptOffer() {

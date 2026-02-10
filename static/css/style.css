@@ -944,10 +944,10 @@ body::before {
 
 /* IMEI Warning on Offer Screen */
 .imei-offer-warning {
-    background: rgba(234, 179, 8, 0.1);
+    background: rgba(234, 179, 8, 0.08);
     border: 1px solid rgba(234, 179, 8, 0.3);
     border-radius: var(--radius-md);
-    padding: 14px 18px;
+    padding: 16px 18px;
     margin-top: 16px;
     color: #e5c565;
     font-size: 13px;
@@ -956,6 +956,53 @@ body::before {
 
 .imei-offer-warning strong {
     color: #fbbf24;
+}
+
+.imei-offer-warning-text {
+    margin-bottom: 14px;
+}
+
+.imei-acknowledge-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 10px 12px;
+    background: rgba(234, 179, 8, 0.08);
+    border: 1px solid rgba(234, 179, 8, 0.25);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    color: #d4b85c;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.imei-acknowledge-label:hover {
+    background: rgba(234, 179, 8, 0.14);
+    border-color: rgba(234, 179, 8, 0.4);
+}
+
+.imei-acknowledge-label.highlight {
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+    animation: imeiPulse 0.4s ease;
+}
+
+.imei-acknowledge-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #fbbf24;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.imei-acknowledge-label input[type="checkbox"]:checked + span {
+    color: #fbbf24;
+}
+
+@keyframes imeiPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
 }
 
 /* Customer form */
