@@ -1,0 +1,349 @@
+
+EPICDEALS
+AI-Powered Universal Pricing Tool
+Build Document v3.1  —  Design + Logic Fix Plan
+
+February 2026  |  Supplements Build Document v3.0
+Two deliverables: (1) New UI Design  (2) Corrected Logic Fix Plan
+
+1. Design Overhaul: Dark, Square, Modern
+The current design (blue gradient background, rounded white card, orange buttons) looks like a generic SaaS template. The redesign goes in the opposite direction: dark, square, confident.
+1.1  Design Direction
+Current (Kill This)
+New Design (Build This)
+Blue gradient background
+White rounded card floating in centre
+Orange CTA buttons
+Rounded pill-shaped chat bubbles
+Generic "Let's get started!" copy
+Near-black (#0a0a0a) with subtle grid texture
+Full-screen layout, no floating card
+Emerald (#10B981) accent with glow effects
+Square-ish chat bubbles (12–16px radius)
+"Sell anything. Get paid fast." — confident, direct
+1.2  Design Specifications
+Colour Palette
+Colour
+Hex
+Usage
+Background
+#0A0A0A
+All screens. Near-black, not pure black.
+Surface
+#111111
+Cards, input fields, option buttons
+Border
+#222222
+Subtle borders on cards and inputs
+Accent (Primary)
+#10B981
+CTAs, progress bars, selected states, positive values
+Danger
+#EF4444
+Negative values (price deductions), damage selections
+Text Primary
+#FFFFFF
+Headlines, primary text, user messages
+Text Secondary
+#9CA3AF
+Labels, descriptions, subtitles
+Text Muted
+#6B7280
+Source attributions, footnotes
+
+Typography
+	•	Font: DM Sans (Google Fonts) — geometric, modern, excellent readability. Fallback: Segoe UI, system sans-serif.
+	•	Headlines: 48px, weight 800, letter-spacing -0.03em. Tight tracking for that premium feel.
+	•	Body: 15px, weight 400, line-height 1.5. Clean and readable.
+	•	Labels: 13px, weight 600, letter-spacing 0.08em, uppercase. Used for section headers like "YOUR OFFER".
+Components
+	•	Buttons (CTA): Background #10B981, text #0A0A0A, border-radius 12px, padding 16px 40px, glow shadow on hover.
+	•	Quick-select buttons: Background #111, border 1px solid #333, border-radius 10px. On hover: border turns #10B981, text turns #10B981.
+	•	Checklist items: Same as quick-select. Selected: green border + subtle green bg for "no issues", red border + subtle red bg for damage items.
+	•	Chat bubbles (bot): Background #1A1A1A, border 1px solid #222, border-radius 16px 16px 16px 4px.
+	•	Chat bubbles (user): Background #10B981, text #0A0A0A, border-radius 16px 16px 4px 16px.
+	•	Progress bar: In the top nav bar. Thin (4px), background #222, fill #10B981, animated width transition.
+	•	Background texture: Subtle grid lines (rgba(255,255,255,0.03)) at 48px intervals. Adds depth without distraction.
+1.3  Three Screens
+The app has exactly three screens. No modals, no popups, no sidebars. Clean transitions between them.
+	•	Landing: Full-screen dark page. Logo top-centre. Big headline. Single CTA button with emerald glow. Category pills (Phones, Cars, Sneakers...) at the bottom. Trust badges (Under 60 sec, No sign-up, SA prices).
+	•	Chat: Top bar with logo + progress bar. Full-height message area with chat bubbles. Quick-select buttons appear below bot messages. Fixed input bar at bottom. Typing indicator (three bouncing dots). Calculation animation (4-step checklist with green checkmarks appearing one by one).
+	•	Offer: Pricing breakdown card (dark surface, clean rows). Two offer cards (Sell Now / Consignment) that highlight on selection. Recommended badge on consignment. Accept button appears after selection. "Too low?" secondary button at bottom.
+
+IMPLEMENTATION NOTE
+The React prototype (epicdeals-redesign.jsx) is a fully interactive reference implementation. It contains all three screens with working navigation, simulated conversations for phones/cars/sneakers, quick-select buttons, checklists, typing indicators, and the offer presentation. Use it as the pixel-perfect reference for porting to the production frontend.
+
+2. Pricing Logic Correction: No Double Depreciation
+The v2.0 system applied age depreciation ON TOP of a current used market price from Perplexity. This is double-dipping — if Perplexity finds that a used iPhone 14 128GB sells for R5,200 in SA right now, that price already reflects its age. Applying a separate -45% age penalty on top penalises the seller twice.
+2.1  Option A: Market Price IS the Baseline (Adopted)
+
+CORRECTED PRICING FORMULA
+Market Value (used, working)        R5,200    ← Perplexity finds current SA used price
+Screen repair (iStore avg)          −R1,200    ← Perplexity researches actual repair cost
+Battery replace (local shops)       −R650      ← Perplexity researches actual repair cost
+─────────────────────────────────────
+Value to us                          R3,350
+
+Sell Now (65%):        R2,178
+Consignment (85%):     R2,848    ← Get R670 more
+2.2  What Changes in the Codebase
+	•	offer_service.py: Remove the age depreciation multiplication step. The Perplexity market value becomes the starting point. Only subtract repair costs.
+	•	depreciation_service.py: Keep the module but change its role to a sanity check. If Perplexity returns a price that seems too high relative to the item's age, flag it for review rather than applying a blanket reduction.
+	•	Offer display: Remove the "Age (2022, 2 years): -45%" line. The breakdown becomes: Market value (used, working) → minus repair costs → Value to us → Sell Now / Consignment.
+2.3  When Depreciation Still Applies
+The depreciation service is NOT deleted. It serves as a fallback for two scenarios:
+	•	Perplexity can't find a used price: For obscure items where no used listings exist, fall back to: new retail price × depreciation curve. This gives a reasonable estimate.
+	•	Sanity checking: If Perplexity returns a used price that's higher than 90% of the new retail price for a 3-year-old item, something is wrong. Flag it for manual review.
+2.4  Updated Offer Copy
+Element
+Copy
+Sell Now subtitle
+Paid within 3 working days of us receiving the device. We collect from your door via courier.
+Consignment subtitle
+We sell for you. Paid 2 working days after the buyer receives the item.
+Consignment badge
+"Get Rxxx more" (not "Save") — uses the actual difference between the two offer amounts.
+Market value label
+"Market value (used, working)" — clarifies this is a current used price, not new retail.
+Source attribution
+"Market value based on current used listings from PriceCheck, Bob Shop, and Gumtree (Feb 2026). Repair estimates from iStore, iFix, and local SA repair shops."
+
+3. Logic Fix Plan: Review & Corrections
+Claude Code's proposed fix plan identifies the right problems but has structural issues that will cause new bugs. Here is a corrected version.
+3.1  Problem 1: Nested Spec Extraction (Storage Re-Asked)
+What Claude Code Proposed
+A post-processing step in ai_service_v3.py that flattens specs after JSON parsing:
+
+Claude Code's Approach
+if 'specs' in result.get('product_info', {}):
+    specs = result['product_info']['specs']
+    for spec_key in ['storage', 'year', 'size', 'color']:
+        if spec_key in specs and specs[spec_key] not in ['if mentioned', '', None]:
+            result['product_info'][spec_key] = specs[spec_key]
+Issues With This Approach
+	•	Incomplete key list. Only checks storage, year, size, color. Misses: ram, processor, mileage, capacity, variant, colourway, and any future fields. This is the same whack-a-mole problem that caused the v2 issues.
+	•	Fragile string check. Checking against 'if mentioned' is a prompt-leak. If the AI's JSON template changes wording, this breaks silently.
+	•	Wrong layer. The fix is applied AFTER AI output. It should be applied BEFORE data enters the engine — at the engine's input boundary, not the AI's output.
+Corrected Fix
+
+CORRECT APPROACH: Flatten at Engine Input
+Fix in: guardrail_engine.py — the set_product_info() method
+
+def set_product_info(self, product_info: dict):
+    # Flatten ALL nested specs to top level
+    specs = product_info.pop('specs', {})
+    if isinstance(specs, dict):
+        for key, value in specs.items():
+            # Only promote if value is meaningful
+            if value and str(value).strip() and \
+               str(value).lower() not in ('unknown', 'not specified', 'if mentioned', 'n/a'):
+                # Don't overwrite explicit top-level values
+                if key not in product_info or not product_info[key]:
+                    product_info[key] = value
+
+    # Auto-collect every field that has a value
+    for key, value in product_info.items():
+        if value and key not in ('name', 'brand', 'category'):
+            self.collected_fields[key] = value
+            self.asked_fields.add(key)
+
+    self.product_info = product_info
+    self.product_identified = True
+    self._set_question_limit()
+Why this is better: It flattens ALL spec keys generically (no hardcoded list), filters out junk values with a blocklist instead of allowlist, does it at the engine boundary so the AI service doesn't need to know about flattening, and auto-collects every meaningful field so the AI can never re-ask them.
+
+3.2  Problem 2: Rigid Question Cap
+What Claude Code Proposed
+A CATEGORY_QUESTION_LIMITS dictionary mapping category strings to integers. Generally correct, but has issues:
+Issues With This Approach
+	•	Explosion of keys. Maps 'phone', 'smartphone', 'iphone', 'android' all separately. This is fragile — what about 'mobile', 'cellphone', 'Samsung Galaxy'? The AI can return any category string.
+	•	No normalisation. If Claude returns 'Smartphone' (capitalised) or 'mobile phone', the lookup fails and silently falls back to 4. The seller gets too many or too few questions with no error.
+	•	Missing the two-layer approach. Category detection should be normalised to a small fixed set FIRST, then limits applied to that set.
+Corrected Fix
+
+CORRECT APPROACH: Normalise Then Limit
+# Step 1: Define a small, fixed set of super-categories
+CATEGORY_MAP = {
+    'electronics': ['phone', 'smartphone', 'iphone', 'android', 'samsung',
+                    'mobile', 'cellphone', 'tablet', 'ipad', 'laptop',
+                    'macbook', 'computer', 'notebook', 'camera', 'dslr',
+                    'mirrorless', 'console', 'playstation', 'xbox', 'nintendo',
+                    'tv', 'television', 'monitor', 'smartwatch', 'watch',
+                    'earbuds', 'headphones', 'speaker', 'drone'],
+    'vehicle':     ['car', 'vehicle', 'motorcycle', 'motorbike', 'scooter',
+                    'bakkie', 'truck', 'suv'],
+    'appliance':   ['appliance', 'vacuum', 'dyson', 'hairdryer', 'straightener',
+                    'airwrap', 'kitchen', 'mixer', 'blender', 'microwave',
+                    'fridge', 'washing machine', 'dishwasher'],
+    'fashion':     ['shoes', 'sneakers', 'nike', 'adidas', 'jordan',
+                    'bag', 'handbag', 'clothing', 'jacket', 'dress'],
+    'furniture':   ['furniture', 'couch', 'sofa', 'table', 'chair',
+                    'desk', 'bed', 'mattress', 'shelf', 'cabinet'],
+}
+
+# Step 2: Map super-categories to limits
+CATEGORY_LIMITS = {
+    'electronics': 4,
+    'vehicle': 6,
+    'appliance': 3,
+    'fashion': 3,
+    'furniture': 2,
+}
+DEFAULT_LIMIT = 4
+
+# Step 3: Normalise function
+def _normalise_category(self, raw_category: str) -> str:
+    lower = raw_category.lower().strip()
+    for super_cat, keywords in self.CATEGORY_MAP.items():
+        if lower in keywords or any(kw in lower for kw in keywords):
+            return super_cat
+    return 'general'
+Why this is better: It normalises the AI's raw category string to one of 5 super-categories before looking up the limit. The keyword matching is fuzzy (any(kw in lower for kw in keywords)), so 'Samsung Galaxy S24' matches 'samsung' in electronics. Unknown categories fall back to 'general' with the default limit of 4.
+
+3.3  Additional Fixes Claude Code Missed
+Fix 3: Engine Should Tell AI What's Already Collected
+The current implementation doesn't pass collected fields back to the AI when requesting the next question. This means the AI can still PROPOSE a question about storage even though the engine collected it — it just gets rejected, wasting an API call.
+
+ADD TO: AI PROMPT CONTEXT
+When requesting the next question from Claude, include:
+
+"Already collected (DO NOT ask about these):"
+  - storage: 128GB
+  - year: 2022
+  - icloud_lock: unlocked
+
+"Still needed (choose from these):"
+  - condition/damage
+  - carrier_contract
+
+This prevents wasted API calls from rejected duplicate proposals.
+Fix 4: Checklist "No Issues" Should Clear Damage Array
+When a user selects "✅ No issues" from the damage checklist, the engine must record condition = 'no_damage' as a single clean value, not an array containing "✅ No issues" as a string. The offer pipeline checks for damage_details == [] or 'no_damage' to skip repair cost research — a string containing an emoji will break this.
+
+ADD TO: guardrail_engine.py
+def record_answer(self, field: str, value):
+    # Normalise 'no damage' answers
+    if field in ('condition', 'damage') and isinstance(value, list):
+        no_damage_indicators = [v for v in value if 'no issue' in v.lower() 
+                                or 'no damage' in v.lower() or 'none' in v.lower()
+                                or 'like new' in v.lower()]
+        if no_damage_indicators:
+            value = 'no_damage'
+    self.collected_fields[field] = value
+    self.asked_fields.add(field)
+Fix 5: Session Serialisation Must Handle Sets
+The engine uses asked_fields as a Python set. Sets are not JSON-serialisable. If Flask tries to serialise the session with a raw set, it will silently fail or crash. Claude Code's plan mentions serialisation but doesn't address this.
+
+ADD TO: to_dict() and from_dict()
+def to_dict(self):
+    return {
+        ...,
+        'asked_fields': list(self.asked_fields),  # set → list for JSON
+        'collected_fields': self.collected_fields,  # already a dict, fine
+        'question_limit': self.question_limit,
+    }
+
+def from_dict(cls, data):
+    engine = cls()
+    ...
+    engine.asked_fields = set(data.get('asked_fields', []))  # list → set
+    engine.question_limit = data.get('question_limit', cls.DEFAULT_LIMIT)
+    return engine
+
+4. Corrected Implementation Plan
+This replaces Claude Code's plan with a corrected version that addresses all five issues and follows proper defensive coding practices.
+Step 1: Fix Pricing Logic — Remove Double Depreciation (Priority: Critical)
+Estimated time: 1 hour
+	•	In offer_service.py: Remove the age depreciation multiplication from the offer calculation pipeline. The Perplexity market value (used, working condition) becomes the starting point.
+	•	Change depreciation_service.py role: Instead of applying depreciation, use it as a sanity-check. If market_value > 0.9 * new_retail_price for an item older than 2 years, flag for review.
+	•	Update offer display: Remove the "Age" line from the breakdown. Show: Market value (used, working) → minus repairs → Value to us → Sell Now / Consignment.
+	•	Update all copy: Sell Now: "Paid within 3 working days of us receiving the device. We collect from your door via courier." Consignment: "We sell for you. Paid 2 working days after the buyer receives the item." Badge: "Get Rxxx more" (not "Save").
+Step 2: Fix guardrail_engine.py (Priority: Critical)
+Estimated time: 1.5–2 hours
+	•	Add CATEGORY_MAP and CATEGORY_LIMITS as class constants (the normalised version, not the flat dictionary).
+	•	Add _normalise_category() method with fuzzy keyword matching.
+	•	Rewrite set_product_info() to: (a) flatten nested specs generically, (b) auto-collect all meaningful fields, (c) normalise category, (d) set question_limit.
+	•	Fix record_answer() to normalise "no damage" selections.
+	•	Fix to_dict() / from_dict() to handle set serialisation and question_limit persistence.
+	•	Update all hardcoded '4' references to self.question_limit (approve_questions, validate_ai_question, should_calculate_offer, get_progress_info).
+Step 3: Fix ai_service_v3.py (Priority: High)
+Estimated time: 1 hour
+	•	Remove the post-processing spec flattener (if already added). The engine handles this now.
+	•	Update prompt context to include collected_fields and remaining_fields when requesting next question. This prevents the AI from wasting proposals on already-collected data.
+	•	Ensure JSON output schema always returns product_info with a flat OR nested specs object (both are now handled by the engine).
+Step 4: Frontend Redesign (Priority: High)
+Estimated time: 3–4 hours
+	•	Replace static/css/style.css with the dark theme. Use the colour palette and typography specs from Section 1.2.
+	•	Rebuild static/js/app.js chat rendering to match the new design. Use the React prototype as pixel-perfect reference for: chat bubbles, quick-select buttons, checklist interactions, progress bar, typing indicator, calculation animation.
+	•	Rebuild landing screen (index.html) with the dark layout: big headline, emerald CTA, category pills, trust badges.
+	•	Rebuild offer display with the dark card layout: breakdown rows, selectable offer cards, accept button.
+Step 5: Test Across Products (Priority: Critical)
+Estimated time: 1.5–2 hours
+#
+Product Input
+Expected Qs
+Must NOT Ask
+Validates
+1
+iPhone 14 128GB
+2–3
+Storage
+Spec flattening works. Storage auto-collected.
+2
+iPhone 16 Pro Max
+2–3
+Storage, Year
+Year auto-detected. Complete model skips specs.
+3
+2019 VW Polo 1.0 TSI
+4–6
+—
+Vehicle gets 6-question cap. Year auto-detected.
+4
+Nike AJ4 Military Black
+1–2
+Unlock, Contract
+Fashion gets 3-cap. No lock questions.
+5
+Dyson Airwrap
+2–3
+Unlock
+Appliance gets 3-cap. Asks variant.
+6
+Weylandts leather couch
+1–2
+Storage, Unlock
+Furniture gets 2-cap. Minimal questions.
+7
+Samsung 65" QLED TV
+2–3
+Size
+Size (65") auto-collected from input.
+8
+MacBook Air M2 16GB
+2–3
+RAM
+RAM auto-collected from '16GB'.
+9
+GHD straightener
+1–2
+Unlock, Contract
+Simple appliance. Fast flow.
+10
+PS5 Slim with 2 controllers
+2–3
+Accessories
+"2 controllers" auto-collected.
+
+
+TOTAL ESTIMATED EFFORT: 8–12 hours
+Pricing logic fix: 1 hour
+Engine fixes: 1.5–2 hours
+AI service fixes: 1 hour
+Frontend redesign: 3–4 hours
+Testing: 1.5–2 hours
+
+Feed this document to Claude Code alongside the React prototype (epicdeals-redesign.jsx). The prototype is the design spec — every colour, radius, spacing, and interaction is implemented there. Claude Code should match it pixel-for-pixel when rebuilding the production frontend.
+ 
+End of Build Document v3.1
+epicdeals.co.za
