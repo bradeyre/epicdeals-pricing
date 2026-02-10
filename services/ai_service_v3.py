@@ -256,14 +256,21 @@ Respond with ONLY this JSON:
         product_name = f"{product_info.get('brand', '')} {product_info.get('model', '')}".strip()
         category = product_info.get('category', '')
 
-        prompt = f"""Generate a SHORT, friendly acknowledgment for: {product_name} ({category})
+        prompt = f"""The user wants to SELL their {product_name} ({category}) through our second-hand marketplace.
 
-Keep it to ONE sentence. Be encouraging. Use South African tone.
+Generate a SHORT, friendly acknowledgment. ONE sentence only. South African tone.
 
-Examples:
-- "Nice, an iPhone 14! Those hold their value pretty well 👍"
-- "A 2019 Polo Comfortline — solid choice, those are always in demand! 🚗"
-- "AJ4 Retros! 🔥 Those are hot right now."
+IMPORTANT: The user is SELLING this item, not buying it. Focus on how well the item sells, its demand, or its resale value.
+
+Good examples (seller context):
+- "Nice, an iPhone 14! Those hold their value really well 👍"
+- "A 2019 Polo — always in demand on the second-hand market! 🚗"
+- "AJ4 Retros! 🔥 Those sell fast."
+- "Sharp choice to sell now — Dyson Airwraps are hot right now!"
+
+BAD examples (sounds like buying — DO NOT do this):
+- "You'll be sorted with this gadget!" ← wrong, they're selling it
+- "Great pickup!" ← wrong, they're not buying
 
 Just the acknowledgment, no extra text:"""
 
