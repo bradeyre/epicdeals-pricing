@@ -744,7 +744,7 @@ class EpicDealsApp {
                         <span class="breakdown-total-label">Value to us</span>
                         <span class="breakdown-total-value">R${this.fmt(offer.adjusted_value)}</span>
                     </div>` : ''}
-                    <p class="breakdown-source">Market value based on current used listings from PriceCheck, Bob Shop, and Gumtree (Feb 2026). Repair estimates from iStore, iFix, and local SA repair shops.</p>
+                    <p class="breakdown-source">Market value based on current used listings from Epic Deals, Bob Shop and other used marketplaces.${offer.repair_costs > 0 ? ' Repair estimates from Platinum Repairs, iStore, WeFix, and other local shops.' : ''}</p>
                 </div>
 
                 <p style="color: var(--text-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px;">Choose an option</p>
