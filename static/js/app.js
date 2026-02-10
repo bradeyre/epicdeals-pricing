@@ -478,6 +478,41 @@ class EpicDealsApp {
             itemsDiv.appendChild(item);
         });
 
+        // Add "Other" option with inline text input
+        const otherItem = document.createElement('button');
+        otherItem.className = 'checklist-item other-btn';
+        otherItem.textContent = 'Other...';
+        otherItem.dataset.value = '__other__';
+        otherItem.addEventListener('click', () => {
+            // Show inline text input for custom issue
+            if (!wrapper.querySelector('.other-input')) {
+                const otherInput = document.createElement('input');
+                otherInput.type = 'text';
+                otherInput.className = 'input-field other-input';
+                otherInput.placeholder = 'Describe the issue...';
+                otherInput.style.cssText = 'width: 100%; margin-top: 8px; margin-bottom: 4px;';
+                // Insert before the Continue button
+                wrapper.insertBefore(otherInput, submitBtn);
+                otherInput.focus();
+
+                // When typing, add/update the custom value in selected set
+                otherInput.addEventListener('input', () => {
+                    // Remove any previous "other" value
+                    selected.forEach(v => { if (v.startsWith('Other: ')) selected.delete(v); });
+                    const val = otherInput.value.trim();
+                    if (val) {
+                        selected.add('Other: ' + val);
+                        otherItem.className = 'checklist-item selected negative';
+                    } else {
+                        otherItem.className = 'checklist-item other-btn';
+                    }
+                });
+            } else {
+                wrapper.querySelector('.other-input').focus();
+            }
+        });
+        itemsDiv.appendChild(otherItem);
+
         const submitBtn = document.createElement('button');
         submitBtn.className = 'checklist-submit';
         submitBtn.textContent = 'Continue';
