@@ -485,6 +485,57 @@ class EpicDealsApp {
     // OFFER DISPLAY (Screen 3)
     // ============================================
 
+    buildChoicesSummary() {
+        const fields = this.productInfo.collected_fields || {};
+        const metadata = new Set(['name', 'brand', 'category', 'model']);
+        const items = [];
+
+        // Friendly labels for field names
+        const labels = {
+            condition: 'Condition',
+            damage: 'Damage',
+            damage_details: 'Damage',
+            condition_details: 'Condition',
+            storage: 'Storage',
+            color: 'Colour',
+            colour: 'Colour',
+            unlock_status: 'Network',
+            network: 'Network',
+            accessories: 'Accessories',
+            battery_health: 'Battery health',
+            year: 'Year',
+            mileage: 'Mileage',
+            size: 'Size',
+            ram: 'RAM'
+        };
+
+        for (const [key, value] of Object.entries(fields)) {
+            if (metadata.has(key) || !value) continue;
+            const label = labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            let display = Array.isArray(value) ? value.join(', ') : String(value);
+            // Clean up internal values
+            if (display === 'no_damage') display = 'No damage';
+            if (display === 'unknown') display = 'Unknown';
+            items.push({ label, display, isDamage: display.toLowerCase().includes('damage') || display.toLowerCase().includes('crack') || display.toLowerCase().includes('water') || display.toLowerCase().includes('broken') });
+        }
+
+        if (items.length === 0) return '';
+
+        const rows = items.map(item =>
+            `<div class="summary-row">
+                <span class="summary-label">${this.escapeHtml(item.label)}</span>
+                <span class="summary-value ${item.isDamage ? 'damage' : ''}">${this.escapeHtml(item.display)}</span>
+            </div>`
+        ).join('');
+
+        return `
+            <div class="choices-summary">
+                <p class="summary-heading">YOUR DETAILS</p>
+                ${rows}
+            </div>
+        `;
+    }
+
     displayOffer(offer) {
         this.showScreen('offer-screen');
         const container = document.getElementById('offer-container');
@@ -549,12 +600,15 @@ class EpicDealsApp {
             const sellNow = offer.sell_now_offer || 0;
             const consignment = offer.consignment_payout || 0;
             const extra = consignment - sellNow;
+            const summaryHtml = this.buildChoicesSummary();
 
             container.innerHTML = `
                 <div class="offer-header">
                     <p class="offer-label">YOUR OFFER</p>
                     <h2 class="offer-title">${this.escapeHtml(productName)}</h2>
                 </div>
+
+                ${summaryHtml}
 
                 <div class="pricing-breakdown">
                     <div class="breakdown-row">

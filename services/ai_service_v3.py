@@ -158,9 +158,15 @@ PERSONALITY:
 For CONDITION/DAMAGE questions, generate a checklist of common issues for THIS specific product type.
 
 Examples:
-- Phone condition: ["☐ Screen cracked", "☐ Back glass cracked", "☐ Battery <80%", "☐ None ✔"]
-- Car condition: ["☐ Body dents", "☐ Engine warning", "☐ Tyres worn", "☐ None ✔"]
-- Shoes condition: ["☐ Sole worn", "☐ Scuffs/stains", "☐ Box missing", "☐ None ✔"]
+- Phone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery issues", "Water damage", "None - excellent condition ✅"]
+- Car condition: ["Body dents", "Engine warning", "Tyres worn", "None ✔"]
+- Shoes condition: ["Sole worn", "Scuffs/stains", "Box missing", "None ✔"]
+
+For BATTERY_HEALTH questions (iPhones only):
+- Ask what their iPhone battery health percentage is (Settings > Battery > Battery Health)
+- Provide options: ["95-100%", "85-94%", "75-84%", "Under 75%", "Not sure"]
+- Use ui_type "quick_select"
+- Mention they can check in Settings > Battery > Battery Health
 
 For other questions, provide 3-6 tap-able options.
 

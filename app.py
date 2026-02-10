@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.6"
+SESSION_VERSION = "v3.1.7"
 
 
 @app.before_request
@@ -246,6 +246,45 @@ def submit_answer():
     })
 
 
+def _normalize_v3_product_info(product_info, collected_fields):
+    """
+    Normalize v3 collected_fields into product_info keys that the offer
+    service expects. The offer service reads 'condition' and 'damage_details'
+    directly from product_info, but the guardrail engine may store these
+    under various field names (condition, damage, damage_details, etc.).
+    """
+    # Flatten collected_fields into product_info top level
+    for key, value in collected_fields.items():
+        product_info[key] = value
+
+    # Normalize damage-related fields into 'damage_details' (list format)
+    damage_keys = ['condition', 'damage', 'damage_details', 'condition_details']
+    damage_items = []
+    for key in damage_keys:
+        val = collected_fields.get(key)
+        if val and val != 'no_damage' and val != 'unknown':
+            if isinstance(val, list):
+                damage_items.extend(val)
+            elif isinstance(val, str):
+                # Skip generic "good"/"excellent" — only include actual damage
+                lower_val = val.lower()
+                if any(d in lower_val for d in ['crack', 'scratch', 'dent', 'water',
+                        'broken', 'chip', 'damage', 'battery', 'dead', 'bent',
+                        'burn', 'stain', 'tear', 'worn', 'fad']):
+                    damage_items.append(val)
+
+    if damage_items:
+        product_info['damage_details'] = damage_items
+        print(f"   🔧 Normalized damage_details: {damage_items}")
+
+    # Ensure 'condition' key exists for offer service
+    if 'condition' not in product_info:
+        product_info['condition'] = 'good'  # Default if not asked
+
+    product_info['collected_fields'] = collected_fields
+    return product_info
+
+
 @app.route('/api/message/v3', methods=['POST'])
 def message_v3():
     """
@@ -310,9 +349,9 @@ def message_v3():
                 print("✅ No questions needed - enough info collected!")
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = identification['product_info']
-                # Also set product_info for calculate-offer endpoint compatibility
-                session['product_info'] = identification['product_info']
-                session['product_info']['collected_fields'] = engine.collected_fields
+                session['product_info'] = _normalize_v3_product_info(
+                    identification['product_info'], engine.collected_fields
+                )
                 return jsonify({
                     'success': True,
                     'should_calculate': True,
@@ -392,8 +431,9 @@ def message_v3():
                 if not approved_questions:
                     session['engine_v3'] = engine.to_dict()
                     session['product_info_v3'] = identification['product_info']
-                    session['product_info'] = identification['product_info']
-                    session['product_info']['collected_fields'] = engine.collected_fields
+                    session['product_info'] = _normalize_v3_product_info(
+                        identification['product_info'], engine.collected_fields
+                    )
                     return jsonify({
                         'success': True,
                         'should_calculate': True,
@@ -454,10 +494,9 @@ def message_v3():
                 print("✅ Enough info collected - triggering offer calculation!")
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = engine.product_info
-                session['product_info_v3']['collected_fields'] = engine.collected_fields
-                # Also set product_info for calculate-offer endpoint compatibility
-                session['product_info'] = engine.product_info
-                session['product_info']['collected_fields'] = engine.collected_fields
+                session['product_info'] = _normalize_v3_product_info(
+                    dict(engine.product_info), dict(engine.collected_fields)
+                )
 
                 return jsonify({
                     'success': True,
@@ -479,9 +518,9 @@ def message_v3():
                 print("⚠️  No next question but calculation not triggered - forcing calculation")
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = engine.product_info
-                session['product_info_v3']['collected_fields'] = engine.collected_fields
-                session['product_info'] = engine.product_info
-                session['product_info']['collected_fields'] = engine.collected_fields
+                session['product_info'] = _normalize_v3_product_info(
+                    dict(engine.product_info), dict(engine.collected_fields)
+                )
 
                 return jsonify({
                     'success': True,
@@ -509,9 +548,9 @@ def message_v3():
                 # Force calculation since we can't ask more questions
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = engine.product_info
-                session['product_info_v3']['collected_fields'] = engine.collected_fields
-                session['product_info'] = engine.product_info
-                session['product_info']['collected_fields'] = engine.collected_fields
+                session['product_info'] = _normalize_v3_product_info(
+                    dict(engine.product_info), dict(engine.collected_fields)
+                )
 
                 return jsonify({
                     'success': True,

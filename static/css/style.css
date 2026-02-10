@@ -586,9 +586,11 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 32px 16px;
+    padding: 32px 16px 80px;
     position: relative;
     z-index: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .offer-container {
@@ -619,6 +621,46 @@ body::before {
     font-weight: 800;
     margin: 0;
     letter-spacing: -0.02em;
+}
+
+/* Choices summary */
+.choices-summary {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 12px;
+}
+
+.summary-heading {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.summary-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.summary-value {
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.summary-value.damage {
+    color: var(--danger);
 }
 
 /* Pricing breakdown */
@@ -824,13 +866,12 @@ body::before {
 }
 
 .fade-in {
-    animation: fadeIn 0.5s ease-in;
+    animation: fadeIn 0.3s ease-out;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
     }
     to {
         opacity: 1;
@@ -845,7 +886,6 @@ body::before {
 @keyframes slideIn {
     from {
         opacity: 0;
-        transform: translateX(-10px);
     }
     to {
         opacity: 1;

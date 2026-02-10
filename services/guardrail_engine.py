@@ -244,6 +244,12 @@ class GuardrailEngine:
         if not mandatory:
             mandatory = ['condition']
 
+        # Inject battery_health for iPhones (under 85% = battery replacement needed)
+        product_name = f"{self.product_info.get('brand', '')} {self.product_info.get('name', '')} {self.product_info.get('model', '')}".lower()
+        if 'iphone' in product_name and 'battery_health' not in optional and 'battery_health' not in mandatory:
+            optional.append('battery_health')
+            print(f"   🔋 Injected battery_health question for iPhone")
+
         # STEP 2: Build final ordered list — mandatory FIRST, then optional
         ordered = mandatory + optional
 
