@@ -180,23 +180,40 @@ class GuardrailEngine:
         print(f"   Question limit: {self.question_limit}")
         print(f"   Auto-collected fields: {list(self.collected_fields.keys())}")
 
+    # Fields that ALWAYS require user input (never auto-skip from extraction)
+    MANDATORY_QUESTION_FIELDS = {'condition', 'damage', 'damage_details', 'condition_details'}
+
     def approve_questions(self, proposed_questions: List[str]) -> List[str]:
         """
         Review AI's proposed questions and approve only valid ones.
 
         Removes:
         - Questions about fields already asked
-        - Questions about fields already collected
-        - Questions beyond the 4-question cap
+        - Questions about fields already collected (EXCEPT mandatory fields like condition)
+        - Questions beyond the category-specific question cap
 
         Returns: List of approved question field names
         """
         approved = []
 
+        # Ensure condition is always asked if not already in the proposed list
+        has_condition = any(f in self.MANDATORY_QUESTION_FIELDS for f in proposed_questions)
+        if not has_condition:
+            proposed_questions = list(proposed_questions) + ['condition']
+
         for field in proposed_questions:
-            # Already asked or collected? Skip
-            if field in self.asked_fields or field in self.collected_fields:
+            # Already asked by the USER? Skip (not just auto-collected)
+            if field in self.asked_fields and field not in self.MANDATORY_QUESTION_FIELDS:
                 print(f"   ⏭️  Skipping '{field}' - already asked/answered")
+                continue
+
+            # Auto-collected spec? Skip UNLESS it's a mandatory user-input field
+            if field in self.collected_fields and field not in self.MANDATORY_QUESTION_FIELDS:
+                print(f"   ⏭️  Skipping '{field}' - auto-collected from input")
+                continue
+
+            # Already approved? Skip duplicates
+            if field in approved:
                 continue
 
             # Would exceed cap? Stop approving
@@ -302,23 +319,25 @@ class GuardrailEngine:
 
         Returns True if:
         - Question cap reached (category-specific)
-        - All approved questions answered
-        - Minimum required fields collected (product + condition)
+        - All approved questions have been asked AND answered
+        - At least one question has been asked (never skip questioning entirely)
         """
+        # SAFETY: Never trigger before at least one question has been asked
+        if self.question_count == 0:
+            print(f"\n   ⏳ NOT YET: No questions asked yet (question_count=0)")
+            return False
+
         # Hit the cap? Always calculate
         if self.question_count >= self.question_limit:
             print(f"\n   🎯 TRIGGER CALCULATION: Question cap reached ({self.question_count}/{self.question_limit})")
             return True
 
-        # All approved questions answered?
-        if self.approved_questions and len(self.collected_fields) >= len(self.approved_questions):
-            print(f"\n   🎯 TRIGGER CALCULATION: All approved questions answered")
-            return True
-
-        # Minimum fields: must have condition/damage info
-        if 'condition' in self.collected_fields or 'damage' in self.collected_fields:
-            if len(self.collected_fields) >= 2:  # At least product + condition + 1 more
-                print(f"\n   🎯 TRIGGER CALCULATION: Sufficient fields collected")
+        # All approved questions asked AND answered?
+        # Count only USER-ANSWERED fields (fields in approved_questions that now have answers)
+        if self.approved_questions:
+            answered_approved = [f for f in self.approved_questions if f in self.collected_fields]
+            if len(answered_approved) >= len(self.approved_questions):
+                print(f"\n   🎯 TRIGGER CALCULATION: All {len(self.approved_questions)} approved questions answered")
                 return True
 
         return False

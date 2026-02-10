@@ -624,7 +624,7 @@ body::before {
 /* Pricing breakdown */
 .pricing-breakdown {
     background: var(--bg-surface);
-    border: 1px solid var(--border);
+    border: 1px solid #333333;
     border-radius: var(--radius-lg);
     padding: 24px;
     margin-bottom: 16px;
@@ -670,8 +670,8 @@ body::before {
 }
 
 .breakdown-source {
-    color: var(--text-muted);
-    font-size: 11px;
+    color: var(--text-secondary);
+    font-size: 12px;
     margin-top: 12px;
     margin-bottom: 0;
     line-height: 1.5;
@@ -680,8 +680,8 @@ body::before {
 /* Offer cards */
 .offer-card {
     width: 100%;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
+    background: #1a1a1a;
+    border: 1px solid #444444;
     border-radius: var(--radius-lg);
     padding: 20px 24px;
     margin-bottom: 12px;
@@ -694,7 +694,8 @@ body::before {
 }
 
 .offer-card:hover {
-    border-color: var(--border-hover);
+    border-color: #666666;
+    background: #222222;
 }
 
 .offer-card.selected {
@@ -724,6 +725,7 @@ body::before {
     font-size: 16px;
     font-weight: 700;
     margin: 0 0 4px;
+    color: var(--text-primary);
 }
 
 .offer-card.selected .offer-card-title {
@@ -750,6 +752,7 @@ body::before {
 .offer-card-price {
     font-size: 24px;
     font-weight: 800;
+    color: var(--text-primary);
 }
 
 .offer-card.selected .offer-card-price {
@@ -794,8 +797,8 @@ body::before {
 .secondary-button {
     width: 100%;
     background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border: 1px solid #444444;
     padding: 12px;
     border-radius: var(--radius-md);
     font-size: 14px;
@@ -805,7 +808,8 @@ body::before {
 }
 
 .secondary-button:hover {
-    border-color: var(--border-hover);
+    border-color: #666666;
+    color: var(--text-primary);
 }
 
 .secondary-button:active {
