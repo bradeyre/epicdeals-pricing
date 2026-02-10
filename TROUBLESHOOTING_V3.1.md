@@ -1,253 +1,201 @@
 # v3.1 Troubleshooting Guide
 
-**Issue:** Storage question still being asked despite "iPhone 16 Pro 256GB" input
-**Status:** Code is correct, session cache issue
-**Date:** February 10, 2026
+**Updated:** February 10, 2026
+**Latest commit:** `68d547f`
+**SESSION_VERSION:** `v3.1.5`
 
 ---
 
-## 🔍 ROOT CAUSE
+## 🔍 KNOWN ISSUES & SOLUTIONS
 
-The guardrail engine fixes ARE deployed and working correctly, but **old browser sessions** created before the deployment are cached and contain the old engine state.
+### Issue 1: Questions Skipped — Goes Straight to Offer
+**Status:** ✅ FIXED (commit `68d547f`)
 
-### Evidence from Console
+**Root Cause:** Three interacting bugs:
+1. `set_product_info()` added auto-extracted specs to `asked_fields` (should only be `collected_fields`)
+2. `validate_ai_question()` rejected mandatory fields (condition) that were in `asked_fields` from auto-collection
+3. Stale sessions persisted across deploys due to unchanged `SESSION_VERSION`
 
-```javascript
-✅ V3.0 Universal Pricing Mode Enabled
-=== showOptions called ===
-Options received: ['256GB']  // Only ONE option - the correct answer!
-Creating buttons for 1 options
-Creating button 0: 256GB
-```
+**If this reoccurs:**
+1. Check `SESSION_VERSION` in `app.py` — must be bumped on each deploy
+2. Check server logs for `APPROVE_QUESTIONS DEBUG` and `VALIDATE_AI_QUESTION DEBUG` prints
+3. `asked_fields (should be empty)` should show `set()` after product identification
+4. If `asked_fields` contains auto-collected fields, the `set_product_info()` fix has regressed
 
-**What this shows:**
-- v3 is enabled ✓
-- AI extracted "256GB" from the initial message ✓
-- But it's STILL proposing storage as a question ✗
+### Issue 2: Old Browser Session Caching
+**Status:** ✅ MITIGATED with SESSION_VERSION
 
-**Why:** The session cookie contains engine state from BEFORE the spec-flattening fix was deployed.
+**Solution:** `SESSION_VERSION` in `app.py` auto-clears old sessions. If users report stale behavior:
 
----
-
-## ✅ SOLUTION 1: Clear Browser Session (Fastest)
-
-### Option A: Delete Session Cookie
-1. Open DevTools (F12)
-2. Go to "Application" tab (Chrome) or "Storage" tab (Firefox)
-3. Expand "Cookies" → `epicdeals-pricing.onrender.com`
-4. Find and delete the `session` cookie
-5. Refresh page (F5)
-6. Start NEW conversation
-
-### Option B: Private/Incognito Window
-1. Open incognito/private window (Ctrl+Shift+N / Cmd+Shift+N)
-2. Navigate to epicdeals-pricing.onrender.com
-3. Test "iPhone 16 Pro 256GB"
-4. Should skip storage question ✓
-
-### Option C: Clear All Site Data
-Chrome: Settings → Privacy → Clear browsing data → Cookies
-Firefox: Ctrl+Shift+Del → Cookies
-
----
-
-## ✅ SOLUTION 2: Force Session Reset (Backend)
-
-If clearing cookies doesn't work, add session reset endpoint:
-
-**File:** `app.py`
-
+#### Option A: Bump SESSION_VERSION
+Change the version string in `app.py` and redeploy:
 ```python
-@app.route('/api/reset-session', methods=['POST'])
-def reset_session():
-    """Force clear session for testing"""
-    session.clear()
-    return jsonify({'success': True, 'message': 'Session cleared'})
+SESSION_VERSION = "v3.1.6"  # Increment on each deploy
 ```
 
-Then call from browser console:
+#### Option B: Manual Session Clear
+User can open browser DevTools → Application → Cookies → delete `session` cookie
+
+#### Option C: API Reset
 ```javascript
 fetch('/api/reset-session', {method: 'POST'}).then(r => r.json()).then(console.log)
 ```
 
+### Issue 3: Condition Question Not Asked
+**Status:** ✅ FIXED (commit `0fbe8ba`)
+
+**Fix:** `MANDATORY_QUESTION_FIELDS` set ensures condition is always asked first. If AI doesn't propose it, engine injects `['condition']`.
+
+### Issue 4: Buyer Language in Acknowledgment
+**Status:** ✅ FIXED (commit `11bfbcc`)
+
+**Fix:** Updated `generate_acknowledgment()` prompt with explicit seller context and bad examples.
+
+### Issue 5: Offer Screen Too Dark / Unreadable
+**Status:** ✅ FIXED (commit `0f8046d`)
+
+**Fix:** Card backgrounds #1a1a1a, borders #444, explicit white text for titles/prices.
+
 ---
 
-## 🧪 VERIFICATION TEST
+## 🧪 VERIFICATION TESTS
 
-After clearing session, run this test:
-
+### Test 1: Question Flow
 ```javascript
-// Paste in browser console
-fetch('/api/message/v3', {
+// Paste in browser console after clearing session
+fetch('/api/reset-session', {method: 'POST'})
+.then(() => fetch('/api/message/v3', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: 'iPhone 16 Pro 256GB' })
-})
+}))
 .then(r => r.json())
 .then(data => {
     console.log('Field asked:', data.field_name);
-    console.log('Should be "condition" not "storage"');
-    return data;
-})
+    console.log('Should be "condition":', data.field_name === 'condition');
+    console.log('IMEI warning:', data.imei_warning);
+    console.log('Should calculate:', data.should_calculate);
+});
 ```
 
-**Expected result:**
-```json
-{
-  "field_name": "condition",
-  "question": "What's the condition of your iPhone 16 Pro?",
-  "quick_options": ["Screen cracked", "Back glass cracked", ...]
-}
-```
+**Expected:**
+- `field_name: "condition"` (NOT "storage")
+- `imei_warning: true`
+- `should_calculate: false`
 
-**If you get `field_name: "storage"`** - session is still cached, try harder reset.
+### Test 2: IMEI Detection
+Phones, tablets, smartwatches should show `imei_warning: true`.
+Laptops, TVs, appliances should show `imei_warning: false` (or undefined).
+
+### Test 3: Category Limits
+| Category | Expected Limit |
+|----------|---------------|
+| Electronics (phones, laptops) | 4 |
+| Vehicle (cars, bikes) | 6 |
+| Appliance (Dyson, fridge) | 3 |
+| Fashion (sneakers, bags) | 3 |
+| Furniture (couch, desk) | 2 |
 
 ---
 
-## 🔍 HOW TO CHECK IF FIX IS WORKING
+## 🔍 SERVER LOG READING GUIDE
 
-### Server Logs (Render Dashboard)
+After the fixes in commit `68d547f`, the server logs show detailed debug info at every decision point:
 
-Look for these prints in Render logs:
-
+### Product Identification
 ```
 🎯 PRODUCT IDENTIFIED: Apple iPhone 16 Pro
    Category: phone → electronics
    Question limit: 4
-   Auto-collected fields: ['storage', 'year']  ← Should see storage here!
-
-   ✅ Approved questions: ['condition', 'unlock_status', 'contract']
-   ⏭️  Skipping 'storage' - already asked/answered  ← This confirms it worked
+   IMEI device: True
+   Auto-collected fields: ['storage', 'year']
+   asked_fields (should be empty): set()    ← KEY: Must be empty!
 ```
 
-If you see `Skipping 'storage'` in the logs but it still shows in UI, the **session is cached**.
-
-### Browser Console
-
-Fresh session should show:
-```javascript
-// First API call response
-{
-  field_name: 'condition',  // NOT 'storage'!
-  message: 'Sharp tech choice...',
-  question: "What's the condition..."
-}
+### Question Approval
+```
+📋 APPROVE_QUESTIONS DEBUG:
+   Proposed: ['condition', 'unlock_status', 'color']
+   Mandatory: ['condition']
+   Optional: ['unlock_status', 'color']
+   Ordered: ['condition', 'unlock_status', 'color']
+   asked_fields: set()
+   collected_fields: ['storage', 'year']
+   question_count: 0, limit: 4
+   ⏭️  Skipping 'storage' - auto-collected from input
+   ✅ Approved questions: ['condition', 'unlock_status', 'color']
 ```
 
----
+### Question Validation
+```
+🔍 VALIDATE_AI_QUESTION DEBUG:
+   Field: condition
+   Is mandatory: True
+   In asked_fields: False
+   In collected_fields: False
+   question_count: 0, limit: 4
 
-## 🐛 KNOWN ISSUES
+   ❓ Question 1/4: condition
+```
 
-### Issue 1: Session Persistence
-**Problem:** Flask sessions persist across deployments
-**Impact:** Users who started conversations before deployment still use old logic
-**Fix:** Clear browser cookies or use incognito
+### Phase 1 Decision
+```
+🔑 PHASE 1 DECISION POINT:
+   approved_questions: ['condition', 'unlock_status', 'color']
+   engine.asked_fields: set()
+   engine.collected_fields: ['storage', 'year']
+   engine.question_count: 0
+```
 
-### Issue 2: AI Sometimes Still Proposes Storage
-**Problem:** Even if AI extracts "256GB", it might propose "storage" question
-**Impact:** Question gets approved if session cache is old
-**Fix:** The guardrail engine SHOULD reject it via `approve_questions()` - but only if collected_fields is populated
-
-### Issue 3: Spec Flattening Timing
-**Problem:** Specs might not be flattened before question approval
-**Impact:** Storage appears in proposed_questions despite being in specs
-**Status:** FIXED in commit 132a6cb (generic flattening at engine boundary)
+**Red flags to watch for:**
+- `asked_fields (should be empty): {'storage', 'year'}` → Bug 1 has regressed
+- `approved_questions: []` → No questions approved, will skip to calculation
+- `Is mandatory: True` + `valid: False` → Bug 2 has regressed
 
 ---
 
 ## 📋 DEBUGGING CHECKLIST
 
-Run through this checklist:
+If questions are being skipped:
 
-- [ ] Cleared browser cookies/session
-- [ ] Opened incognito/private window
-- [ ] Refreshed page (hard refresh: Ctrl+Shift+R)
-- [ ] Started NEW conversation (not continued old one)
-- [ ] Verified v3 enabled (console shows "✅ V3.0 Universal Pricing Mode Enabled")
-- [ ] Checked Render logs for "Auto-collected fields: ['storage']"
-- [ ] Tested API directly via console fetch (see above)
-
-If ALL checked and storage still asked → **escalate to stronger model** (as you suggested).
-
----
-
-## 🎯 ALTERNATIVE: Server-Side Session Invalidation
-
-If clearing browser cache is unreliable, invalidate sessions server-side:
-
-**File:** `app.py` (add after imports)
-
-```python
-import time
-SESSION_VERSION = int(time.time())  # Update this on each deployment
-
-@app.before_request
-def check_session_version():
-    if 'version' not in session or session['version'] != SESSION_VERSION:
-        session.clear()
-        session['version'] = SESSION_VERSION
-```
-
-This forces ALL users to start fresh sessions after deployment.
+- [ ] Check `SESSION_VERSION` — has it been bumped since last deploy?
+- [ ] Check server logs for `asked_fields (should be empty): set()` after product identification
+- [ ] Check server logs for `APPROVE_QUESTIONS DEBUG` — are questions being approved?
+- [ ] Check server logs for `VALIDATE_AI_QUESTION DEBUG` — is validation passing?
+- [ ] Check server logs for `PHASE 1 DECISION POINT` — what's the approved list?
+- [ ] Clear browser session / use incognito
+- [ ] Test via API directly (see Test 1 above)
 
 ---
 
 ## 📊 TEST MATRIX
 
-Test these to verify all fixes:
-
-| Input | Expected Behavior | Test Status |
-|-------|------------------|-------------|
-| "iPhone 16 Pro 256GB" | Skip storage, ask condition | ⏳ Needs fresh session |
-| "2019 VW Polo" | Ask 5-6 questions (vehicle limit) | ⏳ Not tested |
-| "Leather couch" | Ask 1-2 questions (furniture limit) | ⏳ Not tested |
-| "Nike Air Jordan 4 size 10" | Skip size, ask 2-3 questions | ⏳ Not tested |
-| "MacBook Air M2 16GB" | Skip RAM, ask 2-3 questions | ⏳ Not tested |
-
----
-
-## 🆘 IF STILL NOT WORKING
-
-**Escalation Path:**
-
-1. **Check Render deployment logs** - Verify the new code is actually deployed
-   - Go to Render dashboard → your service → Logs
-   - Look for "Auto-collected fields" print statements
-   - Check if "132a6cb" commit is deployed
-
-2. **Verify Git commit** - Ensure changes are in main branch
-   ```bash
-   git log --oneline -5
-   # Should show: 132a6cb Fix guardrail engine...
-   ```
-
-3. **Manual deployment** - Force redeploy on Render
-   - Render dashboard → Manual Deploy → Deploy latest commit
-
-4. **Start new chat with stronger model** (as you suggested)
-   - Provide these files:
-     - `services/guardrail_engine.py` (lines 147-181)
-     - `app.py` (/api/message/v3 endpoint)
-     - `V3.1_IMPLEMENTATION_STATUS.md`
-     - This troubleshooting doc
+| # | Product | Expected Qs | Must NOT Ask | IMEI? |
+|---|---------|-------------|--------------|-------|
+| 1 | iPhone 14 128GB | 2-3 | Storage | Yes |
+| 2 | iPhone 16 Pro 256GB | 2-3 | Storage, Year | Yes |
+| 3 | 2019 VW Polo 1.0 TSI | 4-6 | — | No |
+| 4 | Nike AJ4 Military Black | 1-2 | Unlock, Contract | No |
+| 5 | Dyson Airwrap | 2-3 | Unlock | No |
+| 6 | Weylandts leather couch | 1-2 | Storage, Unlock | No |
+| 7 | Samsung 65" QLED TV | 2-3 | Size | No |
+| 8 | MacBook Air M2 16GB | 2-3 | RAM | No |
+| 9 | Samsung Galaxy Tab S9 | 2-3 | — | Yes |
+| 10 | Apple Watch Series 9 | 2-3 | — | Yes |
 
 ---
 
-## 💡 QUICK WIN: Test with Different Product
+## 🆘 ESCALATION
 
-Instead of "iPhone 16 Pro 256GB", try:
+If fixes don't resolve the issue:
 
-**"2019 VW Polo"**
-
-This tests:
-1. Year extraction (2019)
-2. Vehicle category detection
-3. 6-question limit (not 4)
-4. Different question types (mileage, service history)
-
-Expected: Should ask about mileage first, NOT year.
+1. **Check Render logs** — All debug prints will show exact flow
+2. **Compare logs to expected output** in "Server Log Reading Guide" above
+3. **If `asked_fields` is not empty** after product identification → `set_product_info()` regression
+4. **If approved_questions is empty** → Check `approve_questions()` logic, mandatory injection
+5. **If validation fails** → Check `validate_ai_question()` mandatory exemption
+6. **If session is stale** → Bump `SESSION_VERSION` and redeploy
 
 ---
 
-**Status:** Code is deployed correctly, issue is session caching.
-**Next step:** Clear browser cookies and retest, OR escalate to stronger model if persistent.
+**Last updated:** Commit `68d547f` — All known issues resolved
