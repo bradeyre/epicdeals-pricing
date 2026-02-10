@@ -68,6 +68,13 @@ class GuardrailEngine:
         ],
     }
 
+    # Devices that have an IMEI / can be account-locked (iCloud, Google, Samsung)
+    IMEI_KEYWORDS = [
+        'phone', 'smartphone', 'iphone', 'android', 'samsung', 'mobile', 'cellphone',
+        'tablet', 'ipad', 'galaxy tab',
+        'smartwatch', 'apple watch', 'galaxy watch',
+    ]
+
     # Super-category to question limit mapping
     CATEGORY_LIMITS = {
         'electronics': 4,    # Storage, condition, unlock, contract
@@ -84,6 +91,7 @@ class GuardrailEngine:
         self.product_identified: bool = False
         self.product_info: Dict[str, Any] = {}
         self.question_limit: int = self.DEFAULT_QUESTION_LIMIT  # Dynamic limit based on category
+        self.imei_device: bool = False  # Whether device has IMEI / can be account-locked
 
         # Question tracking
         self.approved_questions: List[str] = []  # Questions AI proposed and we approved
@@ -136,6 +144,23 @@ class GuardrailEngine:
 
         return 'general'
 
+    def _is_imei_device(self, product_info: Dict[str, Any]) -> bool:
+        """
+        Check if this product has an IMEI / can be account-locked.
+        Applies to: phones, tablets, smartwatches (anything with cellular capability).
+        """
+        # Check category
+        category = product_info.get('category', '').lower()
+        if any(kw in category for kw in self.IMEI_KEYWORDS):
+            return True
+
+        # Check product name / model / brand
+        name = f"{product_info.get('name', '')} {product_info.get('brand', '')} {product_info.get('model', '')}".lower()
+        if any(kw in name for kw in self.IMEI_KEYWORDS):
+            return True
+
+        return False
+
     def set_product_info(self, product_info: Dict[str, Any]) -> None:
         """
         Set the identified product information.
@@ -175,9 +200,13 @@ class GuardrailEngine:
         normalised_category = self._normalise_category(raw_category)
         self.question_limit = self.CATEGORY_LIMITS.get(normalised_category, self.DEFAULT_QUESTION_LIMIT)
 
+        # Detect IMEI / account-lockable devices
+        self.imei_device = self._is_imei_device(product_info)
+
         print(f"\n🎯 PRODUCT IDENTIFIED: {product_info.get('brand', '')} {product_info.get('model', '')}")
         print(f"   Category: {raw_category} → {normalised_category}")
         print(f"   Question limit: {self.question_limit}")
+        print(f"   IMEI device: {self.imei_device}")
         print(f"   Auto-collected fields: {list(self.collected_fields.keys())}")
 
     # Fields that ALWAYS require user input (never auto-skip from extraction)
@@ -384,7 +413,8 @@ class GuardrailEngine:
         return {
             'product_identified': self.product_identified,
             'product_info': self.product_info,
-            'question_limit': self.question_limit,  # NEW: Include dynamic limit
+            'question_limit': self.question_limit,
+            'imei_device': self.imei_device,
             'approved_questions': self.approved_questions,
             'collected_fields': self.collected_fields,
             'asked_fields': list(self.asked_fields),  # Convert set to list for JSON
@@ -400,7 +430,8 @@ class GuardrailEngine:
         engine = cls()
         engine.product_identified = data.get('product_identified', False)
         engine.product_info = data.get('product_info', {})
-        engine.question_limit = data.get('question_limit', cls.DEFAULT_QUESTION_LIMIT)  # NEW: Restore limit
+        engine.question_limit = data.get('question_limit', cls.DEFAULT_QUESTION_LIMIT)
+        engine.imei_device = data.get('imei_device', False)
         engine.approved_questions = data.get('approved_questions', [])
         engine.collected_fields = data.get('collected_fields', {})
         engine.asked_fields = set(data.get('asked_fields', []))  # Convert list back to set

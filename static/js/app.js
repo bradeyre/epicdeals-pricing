@@ -203,6 +203,12 @@ class EpicDealsApp {
             this.addMessage(data.message, 'bot');
         }
 
+        // Show IMEI / account lock warning for phones, tablets, smartwatches
+        if (data.imei_warning) {
+            this.isImeiDevice = true;
+            this.showImeiNotice();
+        }
+
         // Update progress
         if (data.progress) {
             this.updateProgress(data.progress);
@@ -230,6 +236,25 @@ class EpicDealsApp {
         } else {
             this.showTextInput();
         }
+    }
+
+    // ============================================
+    // IMEI / ACCOUNT LOCK NOTICE
+    // ============================================
+
+    showImeiNotice() {
+        const container = document.getElementById('chat-messages');
+        const notice = document.createElement('div');
+        notice.className = 'imei-notice fade-in';
+        notice.innerHTML = `
+            <div class="imei-notice-icon">🔒</div>
+            <div class="imei-notice-text">
+                <strong>Important:</strong> This device must arrive without an iCloud, Google, or Samsung account lock.
+                If locked on arrival, there's a <strong>R550 fee</strong> to unlock it remotely with your help — or R550 return shipping.
+            </div>
+        `;
+        container.appendChild(notice);
+        this.scrollToBottom();
     }
 
     // ============================================
@@ -569,6 +594,13 @@ class EpicDealsApp {
                 <button class="accept-button" id="accept-offer-btn" style="display:none;" onclick="app.acceptOffer()">Accept Offer &rarr;</button>
 
                 <button class="secondary-button" id="too-low-btn" onclick="app.showPriceDispute()">Offer too low? Tell us why</button>
+
+                ${this.isImeiDevice ? `
+                <div class="imei-offer-warning">
+                    <strong>🔒 Account Lock Policy:</strong> This device must arrive without an iCloud, Google, or Samsung account lock.
+                    If locked on arrival: <strong>R550 remote unlock fee</strong> (with your assistance) or <strong>R550 return shipping</strong>.
+                </div>
+                ` : ''}
 
                 <p style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 16px;">
                     All offers require manual verification. We'll confirm within 2 working days.

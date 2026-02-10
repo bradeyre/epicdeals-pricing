@@ -356,7 +356,8 @@ def message_v3():
                 'ui_type': question_data.get('ui_type', 'text'),
                 'quick_options': question_data.get('quick_options', []),
                 'progress': engine.get_progress_info(),
-                'should_calculate': False
+                'should_calculate': False,
+                'imei_warning': engine.imei_device
             })
 
         # PHASE 2: Answering Questions

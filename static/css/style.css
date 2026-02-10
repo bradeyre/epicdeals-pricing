@@ -914,6 +914,50 @@ body::before {
     transform: scale(0.97);
 }
 
+/* IMEI / Account Lock Notice (in chat) */
+.imei-notice {
+    display: flex;
+    gap: 10px;
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    max-width: 85%;
+}
+
+.imei-notice-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    line-height: 1.5;
+}
+
+.imei-notice-text {
+    color: #e5c565;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.imei-notice-text strong {
+    color: #fbbf24;
+}
+
+/* IMEI Warning on Offer Screen */
+.imei-offer-warning {
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    margin-top: 16px;
+    color: #e5c565;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.imei-offer-warning strong {
+    color: #fbbf24;
+}
+
 /* Customer form */
 .customer-form {
     padding: 16px;
