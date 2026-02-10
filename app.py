@@ -264,13 +264,19 @@ def _normalize_v3_product_info(product_info, collected_fields):
         val = collected_fields.get(key)
         if val and val != 'no_damage' and val != 'unknown':
             if isinstance(val, list):
-                damage_items.extend(val)
+                # Filter list items — only keep actual damage/issues
+                for item in val:
+                    item_lower = item.lower() if isinstance(item, str) else ''
+                    if any(d in item_lower for d in ['crack', 'scratch', 'dent', 'water',
+                            'broken', 'chip', 'damage', 'battery', 'dead', 'bent',
+                            'burn', 'stain', 'tear', 'worn', 'fad', '85%', 'lens']):
+                        damage_items.append(item)
             elif isinstance(val, str):
                 # Skip generic "good"/"excellent" — only include actual damage
                 lower_val = val.lower()
                 if any(d in lower_val for d in ['crack', 'scratch', 'dent', 'water',
                         'broken', 'chip', 'damage', 'battery', 'dead', 'bent',
-                        'burn', 'stain', 'tear', 'worn', 'fad']):
+                        'burn', 'stain', 'tear', 'worn', 'fad', '85%', 'lens']):
                     damage_items.append(val)
 
     if damage_items:

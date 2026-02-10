@@ -157,8 +157,12 @@ PERSONALITY:
 
 For CONDITION/DAMAGE questions, generate a checklist of common issues for THIS specific product type.
 
+IMPORTANT: For iPhones, always include "Battery health under 85%" as an option in the condition checklist.
+We need to know about battery health because under 85% means a battery replacement is needed before resale.
+
 Examples:
-- Phone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery issues", "Water damage", "None - excellent condition ✅"]
+- iPhone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery health under 85%", "Water damage", "None - excellent condition ✅"]
+- Other phone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery issues", "Water damage", "None - excellent condition ✅"]
 - Car condition: ["Body dents", "Engine warning", "Tyres worn", "None ✔"]
 - Shoes condition: ["Sole worn", "Scuffs/stains", "Box missing", "None ✔"]
 

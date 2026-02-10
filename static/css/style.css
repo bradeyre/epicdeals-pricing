@@ -14,10 +14,10 @@
     --bg-surface-hover: #1a1a1a;
     --border: #222222;
     --border-hover: #333333;
-    --accent: #10B981;
-    --accent-hover: #059669;
-    --accent-glow: rgba(16, 185, 129, 0.25);
-    --accent-bg: rgba(16, 185, 129, 0.15);
+    --accent: #2E88C9;
+    --accent-hover: #2474AD;
+    --accent-glow: rgba(46, 136, 201, 0.25);
+    --accent-bg: rgba(46, 136, 201, 0.15);
     --danger: #EF4444;
     --danger-bg: rgba(239, 68, 68, 0.1);
     --text-primary: #FFFFFF;
