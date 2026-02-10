@@ -1181,5 +1181,6 @@ class EpicDealsApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new EpicDealsApp();
+    const app = new EpicDealsApp();
+    app.enableV3Mode();  // Enable v3.0 Universal Pricing
 });
