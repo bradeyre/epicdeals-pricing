@@ -346,6 +346,24 @@ body::before {
     border: 1px solid var(--border);
 }
 
+/* Back button (change previous answer) */
+.back-button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 0;
+    margin-bottom: 6px;
+    font-family: var(--font-family);
+    transition: color 0.2s ease;
+}
+
+.back-button:hover {
+    color: var(--accent);
+}
+
 /* Quick-select buttons */
 .quick-select-buttons {
     display: flex;
@@ -375,6 +393,11 @@ body::before {
 
 .quick-select-btn:active {
     transform: scale(0.97);
+}
+
+.quick-select-btn.other-btn {
+    border-style: dashed;
+    color: var(--text-muted);
 }
 
 /* Checklist */
@@ -859,6 +882,26 @@ body::before {
 
 .accept-button:active {
     transform: scale(0.97);
+}
+
+/* Sell another item button */
+.sell-another-btn {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 12px;
+    font-family: var(--font-family);
+    transition: color 0.2s ease;
+}
+
+.sell-another-btn:hover {
+    color: var(--accent);
 }
 
 /* Secondary button */

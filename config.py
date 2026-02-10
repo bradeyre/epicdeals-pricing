@@ -33,7 +33,7 @@ class Config:
     PRICE_DROP_THRESHOLD_DAYS = int(os.getenv('PRICE_DROP_THRESHOLD_DAYS', 21))  # Suggest price drop after 21 days
     MIN_PRICE_FLOOR_PERCENTAGE = float(os.getenv('MIN_PRICE_FLOOR_PERCENTAGE', 0.70))  # Never drop below 70% of original
 
-    MIN_ITEM_VALUE = int(os.getenv('MIN_ITEM_VALUE', 3000))
+    MIN_ITEM_VALUE = int(os.getenv('MIN_ITEM_VALUE', 1500))
     MAX_ITEM_VALUE = int(os.getenv('MAX_ITEM_VALUE', 25000))
     CONFIDENCE_THRESHOLD = float(os.getenv('CONFIDENCE_THRESHOLD', 0.75))
 

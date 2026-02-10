@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.10"
+SESSION_VERSION = "v3.1.11"
 
 
 def _log_session_size(label=""):
@@ -36,6 +36,24 @@ def _log_session_size(label=""):
             print(f"   🚨 DANGER: Session cookie near overflow! Keys: {list(session.keys())}")
     except Exception as e:
         print(f"   ❓ Session size check failed: {e}")
+
+
+DAMAGE_KEYWORDS = [
+    'crack', 'scratch', 'dent', 'water', 'broken', 'chip', 'damage',
+    'battery', 'dead', 'bent', 'burn', 'stain', 'tear', 'worn', 'fad',
+    'lens', 'port', 'button', 'overheat', 'screen', 'glass', 'speaker'
+]
+
+
+def _has_damage(collected_fields):
+    """Check if user reported any damage in their condition/damage answers."""
+    for key in ('condition', 'damage', 'damage_details', 'condition_details', 'damage_severity'):
+        val = collected_fields.get(key)
+        if val and val != 'no_damage' and val != 'unknown':
+            val_str = str(val).lower()
+            if any(kw in val_str for kw in DAMAGE_KEYWORDS):
+                return True
+    return False
 
 
 @app.before_request
@@ -618,7 +636,8 @@ def message_v3():
                     'success': True,
                     'should_calculate': True,
                     'message': "That's everything! 🎉 Calculating your offer now...",
-                    'progress': engine.get_progress_info()
+                    'progress': engine.get_progress_info(),
+                    'has_damage': _has_damage(engine.collected_fields)
                 })
 
             # Get next question
@@ -642,7 +661,8 @@ def message_v3():
                     'success': True,
                     'should_calculate': True,
                     'message': "Thanks! Calculating your offer...",
-                    'progress': engine.get_progress_info()
+                    'progress': engine.get_progress_info(),
+                    'has_damage': _has_damage(engine.collected_fields)
                 })
 
             # Generate next question
@@ -672,7 +692,8 @@ def message_v3():
                     'success': True,
                     'should_calculate': True,
                     'message': "Thanks! Calculating your offer...",
-                    'progress': engine.get_progress_info()
+                    'progress': engine.get_progress_info(),
+                    'has_damage': _has_damage(engine.collected_fields)
                 })
 
             # Record AI message
@@ -691,7 +712,8 @@ def message_v3():
                 'ui_type': question_data.get('ui_type', 'text'),
                 'quick_options': question_data.get('quick_options', []),
                 'progress': engine.get_progress_info(),
-                'should_calculate': False
+                'should_calculate': False,
+                'has_damage': _has_damage(engine.collected_fields)
             })
 
     except Exception as e:
@@ -701,6 +723,93 @@ def message_v3():
             'success': False,
             'error': f'Error processing message: {str(e)}'
         }), 500
+
+
+@app.route('/api/go-back/v3', methods=['POST'])
+def go_back_v3():
+    """
+    Undo the last answer so the user can change it.
+    Rolls back engine state by one question and re-generates that question.
+    """
+    try:
+        engine_state = session.get('engine_v3', {})
+        if not engine_state:
+            return jsonify({'success': False, 'error': 'No session found'}), 400
+
+        engine = GuardrailEngine.from_dict(engine_state)
+        last_field = session.get('current_field_v3', '')
+
+        if engine.question_count <= 0 or not engine.asked_fields:
+            return jsonify({'success': False, 'error': 'Nothing to go back to'}), 400
+
+        # Find the last asked field (which is stored in current_field_v3 or the most recent in asked_fields)
+        # We need to figure out which field to replay.
+        # The current_field_v3 is what was LAST asked. If the user answered it, it's in collected_fields.
+        # If they haven't answered yet, we just re-show it.
+
+        # Find the field to undo: walk backwards through approved_questions
+        # to find the most recently answered one
+        field_to_redo = None
+        for field in reversed(engine.approved_questions):
+            if field in engine.collected_fields:
+                field_to_redo = field
+                break
+
+        if not field_to_redo:
+            return jsonify({'success': False, 'error': 'Nothing to go back to'}), 400
+
+        # Undo: remove from collected_fields, decrement question_count, remove from asked_fields
+        engine.collected_fields.pop(field_to_redo, None)
+        engine.asked_fields.discard(field_to_redo)
+        engine.question_count = max(0, engine.question_count - 1)
+
+        # If this was a damage_severity that was injected, also remove it from approved_questions
+        # (it will be re-injected if needed based on the new condition answer)
+        if field_to_redo == 'damage_severity':
+            if 'damage_severity' in engine.approved_questions:
+                engine.approved_questions.remove('damage_severity')
+
+        print(f"\n⬅️  GO BACK: Undoing '{field_to_redo}'")
+        print(f"   question_count: {engine.question_count}")
+        print(f"   collected_fields: {list(engine.collected_fields.keys())}")
+
+        # Re-generate the question for this field
+        question_data = ai_service_v3.generate_question(
+            field_to_redo,
+            engine.product_info,
+            engine.collected_fields
+        )
+
+        # Re-validate (re-adds to asked_fields and increments question_count)
+        validation = engine.validate_ai_question(
+            field_to_redo,
+            question_data['question_text'],
+            question_data.get('quick_options', [])
+        )
+
+        if not validation['valid']:
+            return jsonify({'success': False, 'error': 'Could not regenerate question'}), 500
+
+        engine.record_ai_message(question_data['question_text'])
+        session['engine_v3'] = engine.to_dict()
+        session['current_field_v3'] = field_to_redo
+        _log_session_size("after go-back")
+
+        return jsonify({
+            'success': True,
+            'question': question_data['question_text'],
+            'field_name': field_to_redo,
+            'ui_type': question_data.get('ui_type', 'text'),
+            'quick_options': question_data.get('quick_options', []),
+            'progress': engine.get_progress_info(),
+            'should_calculate': False,
+            'has_damage': _has_damage(engine.collected_fields)
+        })
+
+    except Exception as e:
+        print(f"❌ Error in go_back_v3: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/reset-session', methods=['POST'])

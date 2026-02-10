@@ -7,6 +7,8 @@ class EpicDealsApp {
         this.currentField = null;
         this.currentOffer = null;
         this.productInfo = {};
+        this.hasDamage = false;         // Track if user reported damage (for calc animation)
+        this.answerHistory = [];         // Track field answers for Back navigation
         this.init();
     }
 
@@ -185,10 +187,19 @@ class EpicDealsApp {
         const answer = input.value.trim();
         if (!answer) return;
 
+        // Track answer for back navigation (only if we're answering a question, not initial product)
+        if (this.currentField) {
+            this.answerHistory.push({ field: this.currentField, answer });
+        }
+
         // Show user message
         this.addMessage(answer, 'user');
         input.value = '';
         this.hideTextInput();
+
+        // Remove any back buttons / quick-selects still visible
+        const container = document.getElementById('chat-messages');
+        container.querySelectorAll('.back-button, .quick-select-buttons').forEach(el => el.remove());
 
         // Show typing
         this.showTypingIndicator();
@@ -220,6 +231,11 @@ class EpicDealsApp {
         // Update progress
         if (data.progress) {
             this.updateProgress(data.progress);
+        }
+
+        // Track damage flag from backend (set when condition answer processed)
+        if (data.has_damage !== undefined) {
+            this.hasDamage = data.has_damage;
         }
 
         // Should calculate offer?
@@ -266,12 +282,75 @@ class EpicDealsApp {
     }
 
     // ============================================
+    // BACK NAVIGATION
+    // ============================================
+
+    _createBackButton() {
+        // Only show back if we've answered at least one question
+        if (this.answerHistory.length === 0) return null;
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'back-button';
+        backBtn.innerHTML = '&larr; Change previous answer';
+        backBtn.addEventListener('click', () => this.goBack());
+        return backBtn;
+    }
+
+    async goBack() {
+        // Remove the current question UI (quick-select, checklist)
+        const container = document.getElementById('chat-messages');
+        const quickSelects = container.querySelectorAll('.quick-select-buttons, .checklist-container');
+        quickSelects.forEach(el => el.remove());
+
+        // Also remove back buttons
+        container.querySelectorAll('.back-button').forEach(el => el.remove());
+
+        this.hideTextInput();
+        this.showTypingIndicator();
+
+        try {
+            const response = await fetch('/api/go-back/v3', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            this.hideTypingIndicator();
+
+            if (data.success) {
+                // Pop the last answer from history
+                this.answerHistory.pop();
+
+                // Remove the last user + bot message pair from the chat
+                const messages = container.querySelectorAll('.message');
+                // Remove last 2 messages (user answer + bot question) + the bot question before that
+                let toRemove = 2; // Remove the last user answer bubble + the question before it
+                for (let i = messages.length - 1; i >= 0 && toRemove > 0; i--) {
+                    messages[i].remove();
+                    toRemove--;
+                }
+
+                this.handleV3Response(data);
+            } else {
+                this.showError(data.error || 'Could not go back');
+            }
+        } catch (error) {
+            this.hideTypingIndicator();
+            console.error('Go back error:', error);
+            this.showError('Connection error. Please try again.');
+        }
+    }
+
+    // ============================================
     // QUICK-SELECT BUTTONS
     // ============================================
 
     showQuickSelect(options) {
         this.hideTextInput();
         const container = document.getElementById('chat-messages');
+
+        // Show back button if applicable
+        const backBtn = this._createBackButton();
+        if (backBtn) container.appendChild(backBtn);
 
         const wrapper = document.createElement('div');
         wrapper.className = 'quick-select-buttons fade-in';
@@ -290,17 +369,42 @@ class EpicDealsApp {
                 btn.style.borderColor = 'var(--accent)';
                 btn.style.color = 'var(--accent)';
 
+                // Track answer for back navigation
+                this.answerHistory.push({ field: this.currentField, answer: option });
+
                 this.addMessage(option, 'user');
                 this.showTypingIndicator();
 
                 const data = await this.sendMessageV3(option);
                 this.hideTypingIndicator();
                 wrapper.remove();
+                // Remove back button too
+                container.querySelectorAll('.back-button').forEach(el => el.remove());
 
                 if (data) this.handleV3Response(data);
             });
             wrapper.appendChild(btn);
         });
+
+        // Add "Other" button that reveals the text input
+        const otherBtn = document.createElement('button');
+        otherBtn.className = 'quick-select-btn other-btn';
+        otherBtn.textContent = 'Other...';
+        otherBtn.addEventListener('click', () => {
+            // Visually select "Other"
+            wrapper.querySelectorAll('.quick-select-btn').forEach(b => {
+                b.style.opacity = '0.4';
+            });
+            otherBtn.style.opacity = '1';
+            otherBtn.style.borderColor = 'var(--accent)';
+            otherBtn.style.color = 'var(--accent)';
+            // Focus the text input
+            const textInput = document.getElementById('text-input');
+            textInput.placeholder = 'Type your answer...';
+            textInput.focus();
+            this.scrollToBottom();
+        });
+        wrapper.appendChild(otherBtn);
 
         // Also show text input for custom answers
         this.showTextInput();
@@ -315,6 +419,10 @@ class EpicDealsApp {
     showChecklist(options, fieldName) {
         this.hideTextInput();
         const container = document.getElementById('chat-messages');
+
+        // Show back button if applicable
+        const backBtn = this._createBackButton();
+        if (backBtn) container.appendChild(backBtn);
 
         const wrapper = document.createElement('div');
         wrapper.className = 'checklist-container fade-in';
@@ -382,6 +490,9 @@ class EpicDealsApp {
             const values = Array.from(selected);
             const answer = values.join(', ');
 
+            // Track answer for back navigation
+            this.answerHistory.push({ field: this.currentField, answer });
+
             // Disable
             wrapper.querySelectorAll('button').forEach(b => b.disabled = true);
             wrapper.style.opacity = '0.6';
@@ -392,6 +503,8 @@ class EpicDealsApp {
             const data = await this.sendMessageV3(answer);
             this.hideTypingIndicator();
             wrapper.remove();
+            // Remove back button too
+            container.querySelectorAll('.back-button').forEach(el => el.remove());
 
             if (data) this.handleV3Response(data);
         });
@@ -410,12 +523,15 @@ class EpicDealsApp {
         this.hideTextInput();
         const container = document.getElementById('chat-messages');
 
+        // Build steps dynamically — only show repair costs if damage was reported
         const steps = [
             { icon: '1', label: 'Researching SA market prices...' },
             { icon: '2', label: 'Calculating depreciation...' },
-            { icon: '3', label: 'Estimating repair costs...' },
-            { icon: '4', label: 'Offer ready!' }
         ];
+        if (this.hasDamage) {
+            steps.push({ icon: '3', label: 'Estimating repair costs...' });
+        }
+        steps.push({ icon: String(steps.length + 1), label: 'Offer ready!' });
 
         const animDiv = document.createElement('div');
         animDiv.id = 'calc-animation';
@@ -563,6 +679,8 @@ class EpicDealsApp {
                         We'll make you an offer at 70% of your estimate and contact you for manual assessment.
                     </p>
                 </div>
+
+                <button class="sell-another-btn" onclick="location.reload()">Sell something else</button>
             `;
             document.getElementById('submit-estimate-btn').addEventListener('click', () => this.submitUserEstimate());
             return;
@@ -591,6 +709,8 @@ class EpicDealsApp {
                     </div>
                     <p class="breakdown-source">This offer is based on your estimate and requires manual assessment. Our team will contact you within 2 working days.</p>
                 </div>
+
+                <button class="sell-another-btn" onclick="location.reload()">Sell something else</button>
             `;
             document.getElementById('customer-form').classList.remove('hidden');
             return;
@@ -674,6 +794,8 @@ class EpicDealsApp {
 
                 <button class="secondary-button" id="too-low-btn" onclick="app.showPriceDispute()">Offer too low? Tell us why</button>
 
+                <button class="sell-another-btn" onclick="location.reload()">Sell something else</button>
+
                 <p style="color: var(--text-muted); font-size: 12px; text-align: center; margin-top: 16px;">
                     All offers require manual verification. We'll confirm within 2 working days.
                 </p>
@@ -693,6 +815,8 @@ class EpicDealsApp {
                     </div>
                     <p class="breakdown-source">Our team will contact you within 2 working days with a personalized offer.</p>
                 </div>
+
+                <button class="sell-another-btn" onclick="location.reload()">Sell something else</button>
             `;
             document.getElementById('customer-form').classList.remove('hidden');
         }
@@ -857,6 +981,7 @@ class EpicDealsApp {
                         <p style="color: var(--text-secondary);">${data.message || "We've received your feedback and will review it carefully."}</p>
                         <p style="color: var(--text-muted); font-size: 13px; margin-top: 12px;">You'll hear from us within 2 working days.</p>
                     </div>
+                    <button class="sell-another-btn" onclick="location.reload()">Sell something else</button>
                 `;
             } else {
                 this.showError(data.error || 'Failed to submit feedback');
