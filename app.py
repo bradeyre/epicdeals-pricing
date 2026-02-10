@@ -16,17 +16,27 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Initialize services with error handling
 ai_service = None
+ai_service_v3 = None  # NEW: v3.0 architecture
 offer_service = None
 email_service = None
 
 try:
-    print("Importing AIService...")
+    print("Importing AIService (v2.0)...")
     from services.ai_service import AIService
-    print("✅ AIService imported")
+    print("✅ AIService v2.0 imported")
 
-    print("Initializing AIService...")
+    print("Initializing AIService v2.0...")
     ai_service = AIService()
-    print("✅ AIService initialized")
+    print("✅ AIService v2.0 initialized")
+
+    print("Importing AIServiceV3 (v3.0)...")
+    from services.ai_service_v3 import AIServiceV3
+    from services.guardrail_engine import GuardrailEngine
+    print("✅ AIService v3.0 imported")
+
+    print("Initializing AIService v3.0...")
+    ai_service_v3 = AIServiceV3()
+    print("✅ AIService v3.0 initialized")
 
     print("Importing OfferService...")
     from services.offer_service import OfferService
@@ -50,7 +60,7 @@ try:
     print("✅ Utils imported")
 
     print("\n" + "=" * 60)
-    print("ALL SERVICES INITIALIZED SUCCESSFULLY")
+    print("ALL SERVICES INITIALIZED SUCCESSFULLY (v2.0 + v3.0)")
     print("=" * 60 + "\n")
 
 except Exception as e:
@@ -222,6 +232,229 @@ def submit_answer():
         'completed': False,
         'question': next_question
     })
+
+
+@app.route('/api/message/v3', methods=['POST'])
+def message_v3():
+    """
+    v3.0 Universal Pricing Architecture
+
+    Uses GuardrailEngine + simplified AI for universal product coverage.
+    Handles ANY product in 2-4 questions with no duplicates guaranteed.
+    """
+    try:
+        if ai_service_v3 is None:
+            return jsonify({
+                'success': False,
+                'error': 'AI service v3 not initialized'
+            }), 500
+
+        data = request.json
+        user_message = data.get('message', '').strip()
+
+        if not user_message:
+            return jsonify({
+                'success': False,
+                'error': 'Message cannot be empty'
+            }), 400
+
+        # Get or create GuardrailEngine from session
+        engine_state = session.get('engine_v3', {})
+        if engine_state:
+            engine = GuardrailEngine.from_dict(engine_state)
+        else:
+            engine = GuardrailEngine()
+
+        print(f"\n{'='*60}")
+        print(f"V3 MESSAGE: {user_message}")
+        print(f"Engine state: {engine.state.value}")
+        print(f"Product identified: {engine.product_identified}")
+        print(f"{'='*60}\n")
+
+        # Record user message
+        engine.record_user_message(user_message)
+
+        # PHASE 1: Product Identification
+        if not engine.product_identified:
+            print("📋 Phase 1: Identifying product...")
+
+            # AI identifies the product and proposes questions
+            identification = ai_service_v3.identify_product(user_message)
+
+            # Set product info in engine
+            engine.set_product_info(identification['product_info'])
+
+            # Approve questions (engine filters out already-collected fields)
+            approved_questions = engine.approve_questions(identification['proposed_questions'])
+
+            if not approved_questions:
+                # If no questions needed (enough info from initial message), calculate offer
+                print("✅ No questions needed - enough info collected!")
+                session['engine_v3'] = engine.to_dict()
+                session['product_info_v3'] = identification['product_info']
+                return jsonify({
+                    'success': True,
+                    'should_calculate': True,
+                    'message': "Got it! Calculating your offer now..."
+                })
+
+            # Generate friendly acknowledgment
+            acknowledgment = ai_service_v3.generate_acknowledgment(identification['product_info'])
+
+            # Generate first question
+            first_field = approved_questions[0]
+            question_data = ai_service_v3.generate_question(
+                first_field,
+                identification['product_info'],
+                engine.collected_fields
+            )
+
+            # Validate the question with engine
+            validation = engine.validate_ai_question(
+                first_field,
+                question_data['question_text'],
+                question_data.get('quick_options', [])
+            )
+
+            if not validation['valid']:
+                # Should never happen, but safety check
+                print(f"⚠️  Question validation failed: {validation['reason']}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Internal error - question validation failed'
+                }), 500
+
+            # Record AI message
+            full_response = f"{acknowledgment}\n\n{question_data['question_text']}"
+            engine.record_ai_message(full_response)
+
+            # Save engine state to session
+            session['engine_v3'] = engine.to_dict()
+
+            # Return response with UI options
+            return jsonify({
+                'success': True,
+                'message': acknowledgment,
+                'question': question_data['question_text'],
+                'field_name': first_field,
+                'ui_type': question_data.get('ui_type', 'text'),
+                'quick_options': question_data.get('quick_options', []),
+                'progress': engine.get_progress_info(),
+                'should_calculate': False
+            })
+
+        # PHASE 2: Answering Questions
+        else:
+            print("📋 Phase 2: Processing answer...")
+
+            # Get current question context from last AI message
+            last_question_field = session.get('current_field_v3', '')
+
+            if not last_question_field:
+                return jsonify({
+                    'success': False,
+                    'error': 'Session lost. Please start over.'
+                }), 400
+
+            # Extract answer from user message
+            extracted_answer = ai_service_v3.extract_answer(
+                user_message,
+                last_question_field,
+                engine.product_info
+            )
+
+            # Record the answer in engine
+            engine.record_answer(last_question_field, extracted_answer)
+
+            # Check if we should calculate offer now
+            if engine.should_calculate_offer():
+                print("✅ Enough info collected - triggering offer calculation!")
+                session['engine_v3'] = engine.to_dict()
+                session['product_info_v3'] = engine.product_info
+                session['product_info_v3']['collected_fields'] = engine.collected_fields
+
+                return jsonify({
+                    'success': True,
+                    'should_calculate': True,
+                    'message': "That's everything! 🎉 Calculating your offer now...",
+                    'progress': engine.get_progress_info()
+                })
+
+            # Get next question
+            # Find next unanswered question from approved list
+            next_field = None
+            for field in engine.approved_questions:
+                if field not in engine.collected_fields and field not in engine.asked_fields:
+                    next_field = field
+                    break
+
+            if not next_field:
+                # Shouldn't happen (engine should have triggered calculation), but safety
+                print("⚠️  No next question but calculation not triggered - forcing calculation")
+                session['engine_v3'] = engine.to_dict()
+                session['product_info_v3'] = engine.product_info
+                session['product_info_v3']['collected_fields'] = engine.collected_fields
+
+                return jsonify({
+                    'success': True,
+                    'should_calculate': True,
+                    'message': "Thanks! Calculating your offer...",
+                    'progress': engine.get_progress_info()
+                })
+
+            # Generate next question
+            question_data = ai_service_v3.generate_question(
+                next_field,
+                engine.product_info,
+                engine.collected_fields
+            )
+
+            # Validate with engine
+            validation = engine.validate_ai_question(
+                next_field,
+                question_data['question_text'],
+                question_data.get('quick_options', [])
+            )
+
+            if not validation['valid']:
+                print(f"⚠️  Question rejected: {validation['reason']}")
+                # Force calculation since we can't ask more questions
+                session['engine_v3'] = engine.to_dict()
+                session['product_info_v3'] = engine.product_info
+                session['product_info_v3']['collected_fields'] = engine.collected_fields
+
+                return jsonify({
+                    'success': True,
+                    'should_calculate': True,
+                    'message': "Thanks! Calculating your offer...",
+                    'progress': engine.get_progress_info()
+                })
+
+            # Record AI message
+            engine.record_ai_message(question_data['question_text'])
+
+            # Save state
+            session['engine_v3'] = engine.to_dict()
+            session['current_field_v3'] = next_field
+
+            # Return next question
+            return jsonify({
+                'success': True,
+                'question': question_data['question_text'],
+                'field_name': next_field,
+                'ui_type': question_data.get('ui_type', 'text'),
+                'quick_options': question_data.get('quick_options', []),
+                'progress': engine.get_progress_info(),
+                'should_calculate': False
+            })
+
+    except Exception as e:
+        print(f"❌ Error in message_v3: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Error processing message: {str(e)}'
+        }), 500
 
 
 @app.route('/api/calculate-offer', methods=['POST'])
