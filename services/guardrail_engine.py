@@ -184,13 +184,17 @@ class GuardrailEngine:
 
         # Auto-collect EVERY field that has a meaningful value
         # (except metadata fields like name, brand, category)
+        # IMPORTANT: Only add to collected_fields, NOT asked_fields!
+        # asked_fields should only track fields the USER was explicitly asked about.
+        # Adding to asked_fields here caused downstream validate_ai_question() to
+        # reject questions the user was never actually asked.
         metadata_fields = {'name', 'brand', 'category', 'model'}
         for key, value in product_info.items():
             if key not in metadata_fields and value and str(value).strip():
                 value_str = str(value).lower()
                 if value_str not in ('unknown', 'not specified', 'if mentioned', 'n/a'):
                     self.collected_fields[key] = value
-                    self.asked_fields.add(key)
+                    # DO NOT add to asked_fields — these were auto-extracted, not user-asked
 
         self.product_info = product_info
         self.product_identified = True
@@ -208,6 +212,7 @@ class GuardrailEngine:
         print(f"   Question limit: {self.question_limit}")
         print(f"   IMEI device: {self.imei_device}")
         print(f"   Auto-collected fields: {list(self.collected_fields.keys())}")
+        print(f"   asked_fields (should be empty): {self.asked_fields}")
 
     # Fields that ALWAYS require user input (never auto-skip from extraction)
     MANDATORY_QUESTION_FIELDS = {'condition', 'damage', 'damage_details', 'condition_details'}
@@ -241,6 +246,15 @@ class GuardrailEngine:
 
         # STEP 2: Build final ordered list — mandatory FIRST, then optional
         ordered = mandatory + optional
+
+        print(f"\n📋 APPROVE_QUESTIONS DEBUG:")
+        print(f"   Proposed: {proposed_questions}")
+        print(f"   Mandatory: {mandatory}")
+        print(f"   Optional: {optional}")
+        print(f"   Ordered: {ordered}")
+        print(f"   asked_fields: {self.asked_fields}")
+        print(f"   collected_fields: {list(self.collected_fields.keys())}")
+        print(f"   question_count: {self.question_count}, limit: {self.question_limit}")
 
         for field in ordered:
             # Already asked by the USER? Skip (not just auto-collected)
@@ -279,14 +293,24 @@ class GuardrailEngine:
             'ui_options': list (if valid)
         }
         """
-        # Rule 1: NEVER RE-ASK
-        if question_field in self.asked_fields:
+        is_mandatory = question_field in self.MANDATORY_QUESTION_FIELDS
+
+        print(f"\n🔍 VALIDATE_AI_QUESTION DEBUG:")
+        print(f"   Field: {question_field}")
+        print(f"   Is mandatory: {is_mandatory}")
+        print(f"   In asked_fields: {question_field in self.asked_fields}")
+        print(f"   In collected_fields: {question_field in self.collected_fields}")
+        print(f"   question_count: {self.question_count}, limit: {self.question_limit}")
+
+        # Rule 1: NEVER RE-ASK — but mandatory fields (condition) are exempt
+        # because they may have been auto-added to asked_fields by set_product_info
+        if question_field in self.asked_fields and not is_mandatory:
             return {
                 'valid': False,
                 'reason': f"Field '{question_field}' already asked"
             }
 
-        if question_field in self.collected_fields:
+        if question_field in self.collected_fields and not is_mandatory:
             return {
                 'valid': False,
                 'reason': f"Field '{question_field}' already collected"

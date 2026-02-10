@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.1"
+SESSION_VERSION = "v3.1.5"
 
 
 @app.before_request
@@ -298,6 +298,12 @@ def message_v3():
 
             # Approve questions (engine filters out already-collected fields)
             approved_questions = engine.approve_questions(identification['proposed_questions'])
+
+            print(f"\n🔑 PHASE 1 DECISION POINT:")
+            print(f"   approved_questions: {approved_questions}")
+            print(f"   engine.asked_fields: {engine.asked_fields}")
+            print(f"   engine.collected_fields: {list(engine.collected_fields.keys())}")
+            print(f"   engine.question_count: {engine.question_count}")
 
             if not approved_questions:
                 # If no questions needed (enough info from initial message), calculate offer
