@@ -16,7 +16,26 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.8"
+SESSION_VERSION = "v3.1.9"
+
+
+def _log_session_size(label=""):
+    """Log estimated session cookie size for debugging.
+    Flask's default session is a signed cookie with ~4KB browser limit.
+    If the session exceeds this, the cookie is silently dropped and all state is lost.
+    """
+    import json as _json
+    try:
+        # Estimate: session data gets JSON-serialized then base64-encoded (+33%) then signed (+~100 bytes)
+        raw = _json.dumps(dict(session))
+        estimated_cookie = int(len(raw) * 1.4) + 100  # rough base64+signature overhead
+        pct = int((estimated_cookie / 4096) * 100)
+        level = "✅" if pct < 70 else "⚠️" if pct < 90 else "🚨"
+        print(f"   {level} SESSION SIZE {label}: ~{estimated_cookie} bytes ({pct}% of 4KB limit)")
+        if pct >= 90:
+            print(f"   🚨 DANGER: Session cookie near overflow! Keys: {list(session.keys())}")
+    except Exception as e:
+        print(f"   ❓ Session size check failed: {e}")
 
 
 @app.before_request
@@ -326,6 +345,8 @@ def message_v3():
         print(f"V3 MESSAGE: {user_message}")
         print(f"Engine state: {engine.state.value}")
         print(f"Product identified: {engine.product_identified}")
+        print(f"Session keys: {list(session.keys())}")
+        print(f"engine_v3 in session: {'engine_v3' in session}")
         print(f"{'='*60}\n")
 
         # Record user message
@@ -354,7 +375,7 @@ def message_v3():
                 # If no questions needed (enough info from initial message), calculate offer
                 print("✅ No questions needed - enough info collected!")
                 session['engine_v3'] = engine.to_dict()
-                session['product_info_v3'] = identification['product_info']
+                # product_info_v3 removed — redundant with engine state, wastes cookie space
                 session['product_info'] = _normalize_v3_product_info(
                     identification['product_info'], engine.collected_fields
                 )
@@ -397,6 +418,7 @@ def message_v3():
             # Save engine state to session
             session['engine_v3'] = engine.to_dict()
             session['current_field_v3'] = first_field  # Track which field we're asking about
+            _log_session_size("after Phase 1 save")
 
             # Return response with UI options
             return jsonify({
@@ -436,7 +458,7 @@ def message_v3():
 
                 if not approved_questions:
                     session['engine_v3'] = engine.to_dict()
-                    session['product_info_v3'] = identification['product_info']
+                    # product_info_v3 removed — redundant with engine state, wastes cookie space
                     session['product_info'] = _normalize_v3_product_info(
                         identification['product_info'], engine.collected_fields
                     )
@@ -499,7 +521,7 @@ def message_v3():
             if engine.should_calculate_offer():
                 print("✅ Enough info collected - triggering offer calculation!")
                 session['engine_v3'] = engine.to_dict()
-                session['product_info_v3'] = engine.product_info
+                # product_info_v3 removed — redundant with engine state, wastes cookie space
                 session['product_info'] = _normalize_v3_product_info(
                     dict(engine.product_info), dict(engine.collected_fields)
                 )
@@ -523,7 +545,7 @@ def message_v3():
                 # Shouldn't happen (engine should have triggered calculation), but safety
                 print("⚠️  No next question but calculation not triggered - forcing calculation")
                 session['engine_v3'] = engine.to_dict()
-                session['product_info_v3'] = engine.product_info
+                # product_info_v3 removed — redundant with engine state, wastes cookie space
                 session['product_info'] = _normalize_v3_product_info(
                     dict(engine.product_info), dict(engine.collected_fields)
                 )
@@ -553,7 +575,7 @@ def message_v3():
                 print(f"⚠️  Question rejected: {validation['reason']}")
                 # Force calculation since we can't ask more questions
                 session['engine_v3'] = engine.to_dict()
-                session['product_info_v3'] = engine.product_info
+                # product_info_v3 removed — redundant with engine state, wastes cookie space
                 session['product_info'] = _normalize_v3_product_info(
                     dict(engine.product_info), dict(engine.collected_fields)
                 )
@@ -571,6 +593,7 @@ def message_v3():
             # Save state
             session['engine_v3'] = engine.to_dict()
             session['current_field_v3'] = next_field
+            _log_session_size("after Phase 2 next-question save")
 
             # Return next question
             return jsonify({

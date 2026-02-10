@@ -439,7 +439,15 @@ class GuardrailEngine:
         return "\n".join(state)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Serialize to dict for Flask session storage (v3.1 Fix 5)"""
+        """Serialize to dict for Flask session storage (v3.1 Fix 5)
+
+        IMPORTANT: conversation_turns are deliberately EXCLUDED to keep the
+        session cookie under the ~4KB browser limit. Flask's default session
+        uses signed cookies, and including growing conversation history caused
+        the cookie to silently exceed the limit, losing all session state.
+        The conversation_turns are NOT needed for core engine logic —
+        get_state_for_prompt() works from collected_fields/asked_fields alone.
+        """
         return {
             'product_identified': self.product_identified,
             'product_info': self.product_info,
@@ -451,7 +459,7 @@ class GuardrailEngine:
             'question_count': self.question_count,
             'state': self.state.value,
             'ui_options': self.ui_options,
-            'conversation_turns': self.conversation_turns
+            # conversation_turns EXCLUDED — see docstring above
         }
 
     @classmethod
@@ -468,7 +476,7 @@ class GuardrailEngine:
         engine.question_count = data.get('question_count', 0)
         engine.state = ConversationState(data.get('state', 'identifying'))
         engine.ui_options = data.get('ui_options', [])
-        engine.conversation_turns = data.get('conversation_turns', [])
+        engine.conversation_turns = []  # Not stored in session (cookie size limit)
         return engine
 
     def get_progress_info(self) -> Dict[str, Any]:
