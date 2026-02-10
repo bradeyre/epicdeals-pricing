@@ -68,11 +68,25 @@ class GuardrailEngine:
         ],
     }
 
-    # Devices that have an IMEI / can be account-locked (iCloud, Google, Samsung)
+    # Device-type keywords that indicate IMEI / account-lockable devices
+    # IMPORTANT: Only match on DEVICE TYPE, not brand names.
+    # Samsung makes phones AND headphones; Apple makes iPhones AND AirPods.
+    # Brand-only matches would false-positive on non-lockable accessories.
     IMEI_KEYWORDS = [
-        'phone', 'smartphone', 'iphone', 'android', 'samsung', 'mobile', 'cellphone',
+        'phone', 'smartphone', 'iphone', 'mobile', 'cellphone',
         'tablet', 'ipad', 'galaxy tab',
         'smartwatch', 'apple watch', 'galaxy watch',
+    ]
+
+    # Products that should NEVER be flagged as IMEI devices, even if brand matches
+    IMEI_EXCLUDE_KEYWORDS = [
+        'headphone', 'earphone', 'earbud', 'airpod', 'buds', 'speaker',
+        'charger', 'case', 'cover', 'cable', 'adapter', 'dock', 'stand',
+        'keyboard', 'mouse', 'monitor', 'tv', 'television', 'camera',
+        'lens', 'drone', 'gopro', 'console', 'playstation', 'xbox',
+        'nintendo', 'switch', 'controller', 'remote', 'soundbar',
+        'vacuum', 'appliance', 'fridge', 'washer', 'dryer', 'oven',
+        'microwave', 'blender', 'mixer', 'iron', 'hairdryer', 'straightener',
     ]
 
     # Super-category to question limit mapping
@@ -147,15 +161,23 @@ class GuardrailEngine:
     def _is_imei_device(self, product_info: Dict[str, Any]) -> bool:
         """
         Check if this product has an IMEI / can be account-locked.
-        Applies to: phones, tablets, smartwatches (anything with cellular capability).
+        Only true for phones, tablets, and smartwatches — NOT accessories,
+        audio gear, TVs, consoles, or any other electronics from the same brands.
         """
-        # Check category
+        # Build a combined string from all product fields
         category = product_info.get('category', '').lower()
+        name = f"{product_info.get('name', '')} {product_info.get('brand', '')} {product_info.get('model', '')}".lower()
+        combined = f"{category} {name}"
+
+        # EXCLUSION CHECK FIRST: if product is clearly NOT lockable, skip
+        if any(kw in combined for kw in self.IMEI_EXCLUDE_KEYWORDS):
+            return False
+
+        # Check category for device-type keywords
         if any(kw in category for kw in self.IMEI_KEYWORDS):
             return True
 
-        # Check product name / model / brand
-        name = f"{product_info.get('name', '')} {product_info.get('brand', '')} {product_info.get('model', '')}".lower()
+        # Check product name/model for device-type keywords
         if any(kw in name for kw in self.IMEI_KEYWORDS):
             return True
 
