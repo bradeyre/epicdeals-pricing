@@ -16,7 +16,7 @@ CORS(app)  # Enable CORS for WordPress embedding
 
 # Session version - forces all old sessions to reset on deployment
 # Change this value (or it auto-changes via hash) to invalidate all existing sessions
-SESSION_VERSION = "v3.1.11"
+SESSION_VERSION = "v3.1.12"
 
 
 def _log_session_size(label=""):
@@ -848,8 +848,18 @@ def calculate_offer():
     try:
         offer_data = offer_service.calculate_offer(product_info, damage_info)
 
-        # Store offer in session for later use
-        session['offer_data'] = offer_data
+        # Store MINIMAL offer data in session (full data overflows 4KB cookie!)
+        session['offer_data'] = {
+            'offer_amount': offer_data.get('offer_amount'),
+            'market_value': offer_data.get('market_value'),
+            'repair_costs': offer_data.get('repair_costs', 0),
+            'recommendation': offer_data.get('recommendation'),
+            'reason': offer_data.get('reason', ''),
+            'confidence': offer_data.get('confidence', 0),
+            'sell_now_offer': offer_data.get('sell_now_offer'),
+            'consignment_payout': offer_data.get('consignment_payout'),
+        }
+        _log_session_size("after offer stored")
 
         # Add product_info to the response so frontend can display it
         offer_data['product_info'] = product_info
@@ -860,7 +870,8 @@ def calculate_offer():
         })
 
     except Exception as e:
-        print(f"Error calculating offer: {e}")
+        print(f"❌ Error calculating offer: {e}")
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': 'An error occurred while calculating your offer. Please try again.'

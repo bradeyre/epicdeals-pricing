@@ -48,25 +48,26 @@ class OfferService:
         """
 
         # Step 0: Check courier eligibility
-        print("Checking courier eligibility...")
-        courier_check = is_courier_eligible(product_info)
-
-        if not courier_check['eligible']:
-            return {
-                'offer_amount': None,
-                'market_value': None,
-                'repair_costs': 0,
-                'calculation_breakdown': {},
-                'confidence': 0,
-                'recommendation': 'non_courier_item',
-                'reason': courier_check['reason'],
-                'courier_eligible': False,
-                'consignment_option': None
-            }
+        # NOTE: Courier check already happened during conversation phase.
+        # Skip it here to save an API call and avoid timeout on Vercel.
+        print("Skipping courier check (already done in conversation phase)...")
 
         # Step 1: Research market prices
         print("Researching market prices...")
-        price_research = self.price_research_service.research_prices(product_info)
+        try:
+            price_research = self.price_research_service.research_prices(product_info)
+        except Exception as e:
+            print(f"❌ Price research failed: {e}")
+            import traceback
+            traceback.print_exc()
+            price_research = {
+                'prices_found': [],
+                'market_value': None,
+                'confidence': 0,
+                'sources_checked': [],
+                'price_breakdown': {},
+                'needs_user_estimate': True
+            }
 
         # If no prices found, ask user for estimate
         if price_research.get('needs_user_estimate'):
@@ -103,10 +104,21 @@ class OfferService:
         category = product_info.get('category', 'other')
 
         # Use intelligent repair service to research actual costs
-        repair_research = self.intelligent_repair_service.research_all_damages(
-            product_info,
-            damage_details
-        )
+        try:
+            repair_research = self.intelligent_repair_service.research_all_damages(
+                product_info,
+                damage_details
+            )
+        except Exception as e:
+            print(f"❌ Repair research failed: {e}")
+            import traceback
+            traceback.print_exc()
+            repair_research = {
+                'breakdown': {},
+                'total_repair_cost': 0,
+                'explanation': '',
+                'confidence': 0.5
+            }
 
         repair_costs = repair_research.get('total_repair_cost', 0)
         repair_explanation = repair_research.get('explanation', '')
@@ -303,7 +315,15 @@ class OfferService:
         consignment_payout = max(0, round(consignment_payout / 10) * 10)  # Round to nearest R10
 
         # Check business model eligibility
-        model_options = get_business_model_options(product_info)
+        try:
+            model_options = get_business_model_options(product_info)
+        except Exception as e:
+            print(f"❌ Business model check failed: {e}")
+            model_options = {
+                'sell_now_available': True,
+                'consignment_available': True,
+                'reason': 'Default - classification error'
+            }
 
         consignment_option = {
             'expected_sale_price': adjusted_value,
@@ -432,9 +452,9 @@ class OfferService:
         repair_estimate = self.repair_cost_service.estimate_repair_costs(product_info, damage_info)
         repair_costs = repair_estimate.get('total_repair_cost', 0)
 
-        # Calculate offer: (User Estimate - Repair Costs) × 70%
+        # Calculate offer: (User Estimate - Repair Costs) × 65%
         adjusted_value = max(0, user_estimate - repair_costs)
-        offer_amount = adjusted_value * self.offer_percentage
+        offer_amount = adjusted_value * self.sell_now_percentage
 
         # Round to nearest R10
         offer_amount = round(offer_amount / 10) * 10
@@ -447,7 +467,7 @@ class OfferService:
                 'user_estimate': user_estimate,
                 'repair_costs': repair_costs,
                 'adjusted_value': adjusted_value,
-                'offer_percentage': self.offer_percentage,
+                'offer_percentage': self.sell_now_percentage,
                 'final_offer': offer_amount
             },
             'confidence': 0.3,  # Low confidence - based on user estimate
