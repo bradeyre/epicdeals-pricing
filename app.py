@@ -14,6 +14,18 @@ app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
 CORS(app)  # Enable CORS for WordPress embedding
 
+# Session version - forces all old sessions to reset on deployment
+# Change this value (or it auto-changes via hash) to invalidate all existing sessions
+SESSION_VERSION = "v3.1.1"
+
+
+@app.before_request
+def check_session_version():
+    """Invalidate stale sessions from before this deployment"""
+    if session.get('_version') != SESSION_VERSION:
+        session.clear()
+        session['_version'] = SESSION_VERSION
+
 # Initialize services with error handling
 ai_service = None
 ai_service_v3 = None  # NEW: v3.0 architecture
@@ -292,6 +304,9 @@ def message_v3():
                 print("✅ No questions needed - enough info collected!")
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = identification['product_info']
+                # Also set product_info for calculate-offer endpoint compatibility
+                session['product_info'] = identification['product_info']
+                session['product_info']['collected_fields'] = engine.collected_fields
                 return jsonify({
                     'success': True,
                     'should_calculate': True,
@@ -330,6 +345,7 @@ def message_v3():
 
             # Save engine state to session
             session['engine_v3'] = engine.to_dict()
+            session['current_field_v3'] = first_field  # Track which field we're asking about
 
             # Return response with UI options
             return jsonify({
@@ -372,6 +388,9 @@ def message_v3():
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = engine.product_info
                 session['product_info_v3']['collected_fields'] = engine.collected_fields
+                # Also set product_info for calculate-offer endpoint compatibility
+                session['product_info'] = engine.product_info
+                session['product_info']['collected_fields'] = engine.collected_fields
 
                 return jsonify({
                     'success': True,
@@ -394,6 +413,8 @@ def message_v3():
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = engine.product_info
                 session['product_info_v3']['collected_fields'] = engine.collected_fields
+                session['product_info'] = engine.product_info
+                session['product_info']['collected_fields'] = engine.collected_fields
 
                 return jsonify({
                     'success': True,
@@ -422,6 +443,8 @@ def message_v3():
                 session['engine_v3'] = engine.to_dict()
                 session['product_info_v3'] = engine.product_info
                 session['product_info_v3']['collected_fields'] = engine.collected_fields
+                session['product_info'] = engine.product_info
+                session['product_info']['collected_fields'] = engine.collected_fields
 
                 return jsonify({
                     'success': True,
@@ -455,6 +478,14 @@ def message_v3():
             'success': False,
             'error': f'Error processing message: {str(e)}'
         }), 500
+
+
+@app.route('/api/reset-session', methods=['POST'])
+def reset_session():
+    """Force clear session for testing/debugging"""
+    session.clear()
+    session['_version'] = SESSION_VERSION
+    return jsonify({'success': True, 'message': 'Session cleared', 'version': SESSION_VERSION})
 
 
 @app.route('/api/calculate-offer', methods=['POST'])
