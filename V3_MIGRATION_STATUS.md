@@ -1,7 +1,7 @@
 # v3.0 Migration Status
 
 **Date:** February 9, 2026
-**Progress:** Steps 1-2 Complete (40% done)
+**Progress:** Steps 1-3 Complete (60% done) ✅
 
 ---
 
@@ -64,9 +64,37 @@
 
 ---
 
+### Step 3: Wire Up API Route (DONE ✅)
+**File modified:** `app.py`
+
+**What was done:**
+1. ✅ Imported GuardrailEngine and AIServiceV3 at startup
+2. ✅ Created new `/api/message/v3` endpoint
+3. ✅ Parallel deployment (v2 and v3 run side-by-side)
+4. ✅ Two-phase flow implemented:
+   - Phase 1: Product identification + question approval
+   - Phase 2: Question answering with validation
+5. ✅ UI options returned for frontend (quick_options, ui_type, progress)
+6. ✅ Session management with engine state serialization
+7. ✅ Automatic offer calculation trigger
+
+**Key Features:**
+- Engine validates every question before asking
+- Max 4 questions enforced at code level
+- No duplicate questions possible
+- "I don't know" handled gracefully
+- Progress tracking included
+- Backwards compatible (v2 still works)
+
+**Testing:**
+- Created `test_v3_endpoint.py` for comprehensive testing
+- Tests 5 product types (iPhone, Car, Shoes, Dyson, MacBook)
+- Validates question count ≤ 4
+- Validates conversation reaches offer
+
 ## 🚧 What's Next
 
-### Step 3: Wire Up API Route (1-2 hours)
+### Step 4: Frontend Quick-Select UI (2-3 hours)
 **File to modify:** `app.py`
 
 **What needs to be done:**
