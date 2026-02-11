@@ -864,6 +864,39 @@ body::before {
     color: var(--accent);
 }
 
+.offer-card-price-lg {
+    font-size: 29px !important;
+}
+
+.offer-card-savings-lg {
+    font-size: 17px !important;
+}
+
+/* "Choose an option" header with lines */
+.choose-option-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    margin-top: 4px;
+}
+
+.choose-option-line {
+    flex: 1;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.4;
+}
+
+.choose-option-text {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
 /* Accept button */
 .accept-button {
     width: 100%;
@@ -989,6 +1022,14 @@ body::before {
 
     .offer-card-price {
         font-size: 20px;
+    }
+
+    .offer-card-price-lg {
+        font-size: 24px !important;
+    }
+
+    .offer-card-savings-lg {
+        font-size: 15px !important;
     }
 
     .offer-card {

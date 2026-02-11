@@ -766,8 +766,9 @@ class EpicDealsApp {
                 ${summaryHtml}
 
                 <div class="pricing-breakdown">
+                    <p style="color: var(--text-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px;">Internal Use Only</p>
                     <div class="breakdown-row">
-                        <span class="breakdown-label">Market value (used, working)</span>
+                        <span class="breakdown-label">Market value, if in perfect condition</span>
                         <span class="breakdown-value">R${this.fmt(offer.market_value)}</span>
                     </div>
                     ${offer.repair_costs > 0 ? `
@@ -776,26 +777,18 @@ class EpicDealsApp {
                         <span class="breakdown-value negative">-R${this.fmt(offer.repair_costs)}</span>
                     </div>
                     <div class="breakdown-row breakdown-divider">
-                        <span class="breakdown-total-label">Value to us</span>
+                        <span class="breakdown-total-label">Market Value</span>
                         <span class="breakdown-total-value">R${this.fmt(offer.adjusted_value)}</span>
                     </div>` : ''}
                     <p class="breakdown-source">Market value based on current used listings from Epic Deals, Bob Shop and other used marketplaces.${offer.repair_costs > 0 ? ' Repair estimates from Platinum Repairs, iStore, WeFix, and other local shops.' : ''}</p>
                 </div>
 
-                <p style="color: var(--text-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px;">Choose an option</p>
+                <div class="choose-option-header">
+                    <span class="choose-option-line"></span>
+                    <span class="choose-option-text">Choose an option</span>
+                    <span class="choose-option-line"></span>
+                </div>
                 <div class="offer-cards-group">
-                    <button class="offer-card" id="card-sell-now" onclick="app.selectOfferCard('sell_now')">
-                        <div class="offer-card-content">
-                            <div>
-                                <p class="offer-card-title">Sell Now</p>
-                                <p class="offer-card-subtitle">Paid within 3 working days. We collect via courier.</p>
-                            </div>
-                            <div class="offer-card-price-section">
-                                <div class="offer-card-price">R${this.fmt(sellNow)}</div>
-                            </div>
-                        </div>
-                    </button>
-
                     <button class="offer-card" id="card-consignment" onclick="app.selectOfferCard('consignment')">
                         <div class="offer-card-badge">RECOMMENDED</div>
                         <div class="offer-card-content">
@@ -804,8 +797,20 @@ class EpicDealsApp {
                                 <p class="offer-card-subtitle">We sell for you. Paid 2 days after buyer receives.</p>
                             </div>
                             <div class="offer-card-price-section">
-                                <div class="offer-card-price">R${this.fmt(consignment)}</div>
-                                <p class="offer-card-savings">Get R${this.fmt(extra)} more</p>
+                                <div class="offer-card-price offer-card-price-lg">R${this.fmt(consignment)}</div>
+                                <p class="offer-card-savings offer-card-savings-lg">Get R${this.fmt(extra)} more</p>
+                            </div>
+                        </div>
+                    </button>
+
+                    <button class="offer-card" id="card-sell-now" onclick="app.selectOfferCard('sell_now')">
+                        <div class="offer-card-content">
+                            <div>
+                                <p class="offer-card-title">Sell Now</p>
+                                <p class="offer-card-subtitle">Paid within 3 working days. We collect via courier.</p>
+                            </div>
+                            <div class="offer-card-price-section">
+                                <div class="offer-card-price">R${this.fmt(sellNow)}</div>
                             </div>
                         </div>
                     </button>
