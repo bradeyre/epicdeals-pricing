@@ -295,17 +295,22 @@ Respond with ONLY this JSON:
 
 Generate a SHORT, friendly acknowledgment. ONE sentence only. South African tone.
 
-IMPORTANT: The user is SELLING this item, not buying it. Focus on how well the item sells, its demand, or its resale value.
+IMPORTANT RULES:
+1. The user is SELLING, not buying. Never say "great pickup" or "you'll love it."
+2. DO NOT say the item "sells like hotcakes", "is always in demand", "holds its value well", or any variation of high-demand language. This sets unrealistic expectations about the offer price.
+3. Instead, say something INTERESTING or SPECIFIC about the product itself — a cool fact, a compliment on the model choice, or just a warm friendly greeting.
 
-Good examples (seller context):
-- "Nice, an iPhone 14! Those hold their value really well 👍"
-- "A 2019 Polo — always in demand on the second-hand market! 🚗"
-- "AJ4 Retros! 🔥 Those sell fast."
-- "Sharp choice to sell now — Dyson Airwraps are hot right now!"
+VARIETY — pick a DIFFERENT angle each time:
+- Comment on the product itself: "The {product_name} — solid bit of kit! Let's see what we can do 👍"
+- A fun fact: "Did you know the XM4 was voted best noise-cancelling headphone two years running? Let's price yours up!"
+- Neutral warmth: "Cool, a {product_name}! Let me grab some details and we'll get you an offer."
+- Light humour: "A MacBook Pro — the workhorse! Let's find out what yours is worth."
+- Simple and clean: "Got it — {product_name}. Let's take a quick look! 📋"
 
-BAD examples (sounds like buying — DO NOT do this):
-- "You'll be sorted with this gadget!" ← wrong, they're selling it
-- "Great pickup!" ← wrong, they're not buying
+BAD — do NOT say these:
+- "Those sell fast!" / "Those are hot right now!" / "Always in demand!"
+- "Holds its value really well!" / "Great resale value!"
+- Anything that implies they'll get a high price
 
 Just the acknowledgment, no extra text:"""
 
