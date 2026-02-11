@@ -97,17 +97,51 @@ class OfferService:
                 'price_research': price_research
             }
 
-        # Step 2: Research intelligent repair costs (NEW - Perplexity powered!)
-        print("Researching intelligent repair costs...")
+        # Step 2: Classify damage severity FIRST (before researching repair costs)
         condition = product_info.get('condition', 'good')
         damage_details = product_info.get('damage_details', [])
         category = product_info.get('category', 'other')
 
-        # Use intelligent repair service to research actual costs
+        print("Classifying damage severity...")
+        damage_classification = self.condition_service.classify_damage_severity(
+            damage_details,
+            category
+        )
+        print(f"Damage classification: {damage_classification}")
+
+        # Separate cosmetic-only issues from repairable damage
+        # Cosmetic issues (scratches, scuffs, minor dents) don't need repair —
+        # we sell as-is with a small condition discount. Only research repair
+        # costs for things that actually need fixing.
+        repairable_damages = []
+        cosmetic_damages = []
+
+        for damage in damage_details:
+            damage_lower = damage.lower() if isinstance(damage, str) else ''
+            # Skip "none" / "perfect" markers
+            if any(p in damage_lower for p in ['none', 'no issues', 'perfect', 'everything works']):
+                continue
+            # Cosmetic-only: scratches, scuffs, minor dents, wear
+            if any(c in damage_lower for c in [
+                'scratch', 'scuff', 'minor dent', 'light wear', 'cosmetic',
+                'small dent', 'body scratches', 'minor wear', 'hairline'
+            ]) and not any(s in damage_lower for s in [
+                'crack', 'broken', 'not working', 'dead', 'water',
+                'shatter', 'chip', 'fungus', 'leak'
+            ]):
+                cosmetic_damages.append(damage)
+            else:
+                repairable_damages.append(damage)
+
+        print(f"   Cosmetic only (no repair needed): {cosmetic_damages}")
+        print(f"   Repairable (research costs): {repairable_damages}")
+
+        # Step 3: Research repair costs ONLY for repairable damage
+        print("Researching intelligent repair costs...")
         try:
             repair_research = self.intelligent_repair_service.research_all_damages(
                 product_info,
-                damage_details
+                repairable_damages  # Only non-cosmetic damage!
             )
         except Exception as e:
             print(f"❌ Repair research failed: {e}")
@@ -124,6 +158,15 @@ class OfferService:
         repair_explanation = repair_research.get('explanation', '')
         repair_confidence = repair_research.get('confidence', 1.0)
 
+        # Apply a small cosmetic discount if there are cosmetic-only issues
+        # (these don't need repair, just reduce the "like new" premium slightly)
+        cosmetic_discount = 0
+        if cosmetic_damages:
+            # Light cosmetic issues = 3-8% discount depending on count
+            discount_pct = min(0.03 * len(cosmetic_damages), 0.08)
+            cosmetic_discount = market_value * discount_pct
+            print(f"   Cosmetic discount: {discount_pct*100:.0f}% = R{cosmetic_discount:,.0f}")
+
         # Check if repair costs have low confidence - needs manual research
         if repair_costs > 0 and repair_confidence < self.repair_confidence_threshold:
             print(f"Low repair confidence ({repair_confidence:.2f}) - adding to research queue")
@@ -131,7 +174,7 @@ class OfferService:
             # Calculate preliminary offer
             preliminary_value = self.condition_service.calculate_value_with_repairs(
                 market_value,
-                repair_costs,
+                repair_costs + cosmetic_discount,
                 category
             )
             preliminary_offer = preliminary_value * self.sell_now_percentage
@@ -145,6 +188,7 @@ class OfferService:
                 'calculation_breakdown': {
                     'market_value': market_value,
                     'repair_costs': repair_costs,
+                    'cosmetic_discount': cosmetic_discount,
                     'preliminary_offer': preliminary_offer,
                     'repair_confidence': repair_confidence
                 },
@@ -157,14 +201,8 @@ class OfferService:
                 'research_sla': '2 working days'
             }
 
-        # Step 3: Classify damage severity and check for BER
-        print("Classifying damage severity...")
-        damage_classification = self.condition_service.classify_damage_severity(
-            damage_details,
-            category
-        )
-
-        print(f"Damage classification: {damage_classification}")
+        # Combine repair costs + cosmetic discount for total deductions
+        total_deductions = repair_costs + cosmetic_discount
 
         # Step 4: Check if Beyond Economic Repair
         print("Checking if beyond economic repair...")
@@ -237,16 +275,21 @@ class OfferService:
 
         # Step 5: NEW CALCULATION - No double-dipping!
         # Use the new method that doesn't double-penalize
+        # total_deductions = repair costs (for actual breakage) + cosmetic discount
         print("Calculating value with repairs (new method)...")
         adjusted_value = self.condition_service.calculate_value_with_repairs(
             market_value,
-            repair_costs,
+            total_deductions,
             category
         )
 
         print(f"\nPricing Calculation (NEW METHOD):")
         print(f"- Market Value (working condition): R{market_value:,.2f}")
-        print(f"- Repair Costs: -R{repair_costs:,.2f}")
+        if repair_costs > 0:
+            print(f"- Repair Costs: -R{repair_costs:,.2f}")
+        if cosmetic_discount > 0:
+            print(f"- Cosmetic Discount: -R{cosmetic_discount:,.2f}")
+        print(f"- Total Deductions: -R{total_deductions:,.2f}")
         print(f"- Value to Us: R{adjusted_value:,.2f}\n")
 
         # Step 4: Legacy support for old damage_info format
