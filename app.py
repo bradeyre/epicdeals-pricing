@@ -289,32 +289,51 @@ def _normalize_v3_product_info(product_info, collected_fields):
     service expects. The offer service reads 'condition' and 'damage_details'
     directly from product_info, but the guardrail engine may store these
     under various field names (condition, damage, damage_details, etc.).
+
+    KEY LOGIC: If the user answered a damage_severity follow-up, that answer
+    is the authoritative description of the damage. The initial condition
+    answer (e.g. "Bezel/case damaged") is just the category — the severity
+    answer (e.g. "Minor scratches/scuffs") is what actually matters for pricing.
     """
     # Flatten collected_fields into product_info top level
     for key, value in collected_fields.items():
         product_info[key] = value
 
+    # If damage_severity exists, it REPLACES the initial condition answer
+    # in damage_details. The severity is the precise description.
+    severity = collected_fields.get('damage_severity')
+    has_severity = severity and severity != 'no_damage' and severity != 'unknown'
+
     # Normalize damage-related fields into 'damage_details' (list format)
     damage_keys = ['condition', 'damage', 'damage_details', 'condition_details']
     damage_items = []
-    for key in damage_keys:
-        val = collected_fields.get(key)
-        if val and val != 'no_damage' and val != 'unknown':
-            if isinstance(val, list):
-                # Filter list items — only keep actual damage/issues
-                for item in val:
-                    item_lower = item.lower() if isinstance(item, str) else ''
-                    if any(d in item_lower for d in ['crack', 'scratch', 'dent', 'water',
-                            'broken', 'chip', 'damage', 'battery', 'dead', 'bent',
-                            'burn', 'stain', 'tear', 'worn', 'fad', '85%', 'lens']):
-                        damage_items.append(item)
-            elif isinstance(val, str):
-                # Skip generic "good"/"excellent" — only include actual damage
-                lower_val = val.lower()
-                if any(d in lower_val for d in ['crack', 'scratch', 'dent', 'water',
-                        'broken', 'chip', 'damage', 'battery', 'dead', 'bent',
-                        'burn', 'stain', 'tear', 'worn', 'fad', '85%', 'lens']):
-                    damage_items.append(val)
+
+    _damage_kws = ['crack', 'scratch', 'dent', 'water', 'broken', 'chip',
+                   'damage', 'battery', 'dead', 'bent', 'burn', 'stain',
+                   'tear', 'worn', 'fad', '85%', 'lens', 'port', 'button',
+                   'overheat', 'screen', 'glass', 'speaker']
+
+    if has_severity:
+        # Use the severity answer as the authoritative damage description
+        # (skip the raw condition answer — it's just the category)
+        sev_str = str(severity).lower()
+        if any(d in sev_str for d in _damage_kws):
+            damage_items.append(severity)
+            print(f"   🔧 Using damage_severity as authoritative: {severity}")
+    else:
+        # No severity follow-up — use condition/damage fields directly
+        for key in damage_keys:
+            val = collected_fields.get(key)
+            if val and val != 'no_damage' and val != 'unknown':
+                if isinstance(val, list):
+                    for item in val:
+                        item_lower = item.lower() if isinstance(item, str) else ''
+                        if any(d in item_lower for d in _damage_kws):
+                            damage_items.append(item)
+                elif isinstance(val, str):
+                    lower_val = val.lower()
+                    if any(d in lower_val for d in _damage_kws):
+                        damage_items.append(val)
 
     if damage_items:
         product_info['damage_details'] = damage_items

@@ -170,13 +170,21 @@ PERSONALITY:
 
 For CONDITION/DAMAGE questions, generate a checklist of common issues for THIS specific product type.
 
+IMPORTANT LANGUAGE RULES for condition options:
+- Use SOFT, descriptive language — never harsh words like "damaged", "broken", "destroyed"
+- Describe the SYMPTOM, not the verdict. Say "Screen has scratches" not "Screen damaged"
+- Separate cosmetic wear from functional problems. Cosmetic = scratches, scuffs, wear marks. Functional = doesn't work, broken, cracked.
+- Always include a "None - excellent condition ✅" option LAST
+
 IMPORTANT: For iPhones, always include "Battery health under 85%" as an option in the condition checklist.
 We need to know about battery health because under 85% means a battery replacement is needed before resale.
 
 Examples:
-- iPhone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery health under 85%", "Water damage", "None - excellent condition ✅"]
-- Other phone condition: ["Screen cracked/scratched", "Back glass cracked", "Camera lens damaged", "Battery issues", "Water damage", "None - excellent condition ✅"]
-- Car condition: ["Body dents", "Engine warning", "Tyres worn", "None ✔"]
+- iPhone condition: ["Screen scratched", "Back glass cracked", "Camera lens scratched", "Battery health under 85%", "Water damage", "Body scratches or scuffs", "None - excellent condition ✅"]
+- Other phone condition: ["Screen scratched", "Back glass cracked", "Camera lens scratched", "Battery issues", "Water damage", "Body scratches or scuffs", "None - excellent condition ✅"]
+- Watch condition: ["Screen scratched", "Bezel/case has scratches or scuffs", "Strap worn or damaged", "Battery won't hold charge", "Buttons not working properly", "Water damage", "None - excellent condition ✅"]
+- Laptop condition: ["Screen scratched", "Keyboard keys missing or sticky", "Battery health under 85%", "Body scratches or dents", "Trackpad issues", "None - excellent condition ✅"]
+- Car condition: ["Body dents", "Engine warning light", "Tyres worn", "None ✔"]
 - Shoes condition: ["Sole worn", "Scuffs/stains", "Box missing", "None ✔"]
 
 For DAMAGE_SEVERITY questions (follow-up after user reported damage):

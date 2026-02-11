@@ -558,50 +558,90 @@ class EpicDealsApp {
         this.hideTextInput();
         const container = document.getElementById('chat-messages');
 
-        // Build steps dynamically — only show repair costs if damage was reported
-        const steps = [
-            { icon: '1', label: 'Researching SA market prices...' },
-            { icon: '2', label: 'Calculating depreciation...' },
+        // Build research steps — these animate while the real API call runs in parallel
+        const researchSteps = [
+            'Searching SA marketplaces for recent sales...',
+            'Checking Epic Deals, Bob Shop, Gumtree...',
+            'Comparing prices across platforms...',
+            'Analysing condition impact...',
         ];
         if (this.hasDamage) {
-            steps.push({ icon: '3', label: 'Estimating repair costs...' });
+            researchSteps.push('Researching repair costs from local shops...');
         }
-        steps.push({ icon: String(steps.length + 1), label: 'Offer ready!' });
+        researchSteps.push(
+            'Calculating fair offer...',
+            'Almost there — finalising your offer...'
+        );
 
         const animDiv = document.createElement('div');
         animDiv.id = 'calc-animation';
         animDiv.className = 'calculation-animation fade-in';
-
-        steps.forEach((step, idx) => {
-            animDiv.innerHTML += `
-                <div class="calc-step ${idx === 0 ? 'active' : 'inactive'}" id="calc-step-${idx}">
-                    <div class="calc-icon">${idx === 0 ? '&#10003;' : step.icon}</div>
-                    <div class="calc-label">${step.label}</div>
-                </div>
-            `;
-        });
+        animDiv.innerHTML = `
+            <div class="calc-research-header">
+                <div class="calc-spinner"></div>
+                <span>Researching your item...</span>
+            </div>
+            <div class="calc-step-current" id="calc-current-step">${researchSteps[0]}</div>
+            <div class="calc-progress-bar">
+                <div class="calc-progress-fill" id="calc-progress-fill"></div>
+            </div>
+            <div class="calc-fun-facts" id="calc-fun-facts"></div>
+        `;
 
         container.appendChild(animDiv);
         this.scrollToBottom();
 
-        // Animate steps
-        let currentStep = 0;
-        const interval = setInterval(() => {
-            currentStep++;
-            if (currentStep < steps.length) {
-                const stepEl = document.getElementById(`calc-step-${currentStep}`);
-                if (stepEl) {
-                    stepEl.classList.remove('inactive');
-                    stepEl.classList.add('active');
-                    stepEl.querySelector('.calc-icon').innerHTML = '&#10003;';
-                }
+        // Fun facts to cycle through while waiting
+        const funFacts = [
+            '💡 We check real listings, not just estimates',
+            '🇿🇦 Prices are based on the SA second-hand market',
+            '📊 We compare across multiple platforms for accuracy',
+            '🔍 Each item is individually researched',
+            '⚡ Our AI analyses hundreds of listings in seconds',
+            '🤝 We offer two options: Sell Now or Consignment',
+            '📦 Free courier collection from your door',
+            '🛡️ Items are fully insured while with us',
+        ];
+
+        let stepIdx = 0;
+        let factIdx = 0;
+        const stepEl = document.getElementById('calc-current-step');
+        const progressEl = document.getElementById('calc-progress-fill');
+        const factsEl = document.getElementById('calc-fun-facts');
+
+        // Show first fun fact
+        factsEl.textContent = funFacts[0];
+
+        // Cycle through research steps (every 3s)
+        const stepInterval = setInterval(() => {
+            stepIdx++;
+            if (stepIdx < researchSteps.length) {
+                stepEl.style.opacity = '0';
+                setTimeout(() => {
+                    stepEl.textContent = researchSteps[stepIdx];
+                    stepEl.style.opacity = '1';
+                }, 200);
+                // Progress bar advances proportionally but never hits 100%
+                const pct = Math.min(85, ((stepIdx + 1) / researchSteps.length) * 85);
+                progressEl.style.width = pct + '%';
             }
-            if (currentStep >= steps.length - 1) {
-                clearInterval(interval);
-                // Trigger offer calculation after animation
-                setTimeout(() => this.calculateOffer(), 500);
-            }
-        }, 1200);
+        }, 3000);
+
+        // Cycle fun facts (every 5s)
+        const factInterval = setInterval(() => {
+            factIdx = (factIdx + 1) % funFacts.length;
+            factsEl.style.opacity = '0';
+            setTimeout(() => {
+                factsEl.textContent = funFacts[factIdx];
+                factsEl.style.opacity = '1';
+            }, 300);
+        }, 5000);
+
+        // Store intervals so we can clear them when done
+        this._calcIntervals = { stepInterval, factInterval };
+
+        // Start the actual API call immediately (in parallel with animation)
+        this.calculateOffer();
     }
 
     // ============================================
@@ -616,6 +656,21 @@ class EpicDealsApp {
             });
             const data = await response.json();
 
+            // Stop animation intervals
+            if (this._calcIntervals) {
+                clearInterval(this._calcIntervals.stepInterval);
+                clearInterval(this._calcIntervals.factInterval);
+            }
+
+            // Quick finish animation: fill progress to 100%
+            const progressEl = document.getElementById('calc-progress-fill');
+            const stepEl = document.getElementById('calc-current-step');
+            if (progressEl) progressEl.style.width = '100%';
+            if (stepEl) stepEl.textContent = 'Offer ready!';
+
+            // Brief pause to show completion, then display offer
+            await new Promise(r => setTimeout(r, 600));
+
             // Remove animation
             const animDiv = document.getElementById('calc-animation');
             if (animDiv) animDiv.remove();
@@ -628,6 +683,12 @@ class EpicDealsApp {
             }
         } catch (error) {
             console.error('Offer calculation error:', error);
+            if (this._calcIntervals) {
+                clearInterval(this._calcIntervals.stepInterval);
+                clearInterval(this._calcIntervals.factInterval);
+            }
+            const animDiv = document.getElementById('calc-animation');
+            if (animDiv) animDiv.remove();
             this.showError('Error calculating offer. Please try again.');
         }
     }
